@@ -32,13 +32,23 @@ jobs:
           REELPROOF_BUILD_PYTHON: ${{ runner.temp }}/reelproof-personal-tools/bin/python
           REELPROOF_PERSONAL_BUNDLE_ID: ${{ inputs.bundle_id }}
         run: bash scripts/build_ios_personal.sh
-      - name: Verify prepare button in iOS Simulator
-        env:
-          REELPROOF_BUILD_PYTHON: ${{ runner.temp }}/reelproof-personal-tools/bin/python
-        run: bash scripts/test_ios_personal_ui.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ReelProof-personal-IPA-requires-your-signature
           path: reelproof-personal/native/ios/personal-distribution/*
           if-no-files-found: error
+          retention-days: 7
+      - name: Verify prepare button in iOS Simulator
+        timeout-minutes: 10
+        env:
+          REELPROOF_BUILD_PYTHON: ${{ runner.temp }}/reelproof-personal-tools/bin/python
+        run: bash scripts/test_ios_personal_ui.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: ReelProof-prepare-button-simulator-report
+          path: |
+            reelproof-personal/native/ios/build/personal-ui-test.log
+            reelproof-personal/native/ios/personal-distribution/ui-test-status.json
+          if-no-files-found: warn
           retention-days: 7
