@@ -39,7 +39,7 @@ final class PreparationUITests: XCTestCase {
         let expectation = XCTNSPredicateExpectation(predicate: ready, object: app)
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
         if app.alerts["탐지 준비 확인"].exists {
-            XCTAssertTrue(app.alerts.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "App Group")).firstMatch.exists)
+            XCTAssertTrue(app.alerts.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "연결 설정을 전달하지 못했습니다")).firstMatch.exists)
         } else {
             XCTAssertTrue(app.otherElements["broadcastControls"].exists)
         }

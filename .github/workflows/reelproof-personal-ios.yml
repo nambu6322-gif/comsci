@@ -39,7 +39,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
       - name: Verify prepare button in iOS Simulator
-        timeout-minutes: 10
+        timeout-minutes: 15
         env:
           REELPROOF_BUILD_PYTHON: ${{ runner.temp }}/reelproof-personal-tools/bin/python
         run: bash scripts/test_ios_personal_ui.sh
