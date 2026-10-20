@@ -1,0 +1,9 @@
+**/build/
+*.p12
+*.p8
+*.mobileprovision
+native/ios/project.personal.yml
+native/ios/PersonalBuild.json
+native/ios/personal-distribution/
+**/*.personal.entitlements
+**/*.xcodeproj/

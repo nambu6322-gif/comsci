@@ -1,0 +1,40 @@
+name: Build personal iPhone IPA for Windows signing
+on:
+  push:
+    branches: [codex/reelproof-personal-ios]
+    paths: ['reelproof-personal/**', '.github/workflows/reelproof-personal-ios.yml']
+  workflow_dispatch:
+    inputs:
+      bundle_id:
+        description: Optional unique bundle ID (leave empty for a generated identity)
+        required: false
+        type: string
+permissions:
+  contents: read
+jobs:
+  personal_ipa:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: reelproof-personal
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install build tools
+        run: |
+          brew install xcodegen
+          python3 -m venv "$RUNNER_TEMP/reelproof-personal-tools"
+          "$RUNNER_TEMP/reelproof-personal-tools/bin/pip" install PyYAML==6.0.3
+      - name: Compile IPA without Apple login
+        env:
+          REELPROOF_BUILD_PYTHON: ${{ runner.temp }}/reelproof-personal-tools/bin/python
+          REELPROOF_PERSONAL_BUNDLE_ID: ${{ inputs.bundle_id }}
+        run: bash scripts/build_ios_personal.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ReelProof-personal-IPA-requires-your-signature
+          path: reelproof-personal/native/ios/personal-distribution/*
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,60 @@
+name: ReelProof
+options:
+  bundleIdPrefix: app.reelproof
+  deploymentTarget:
+    iOS: "16.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    TARGETED_DEVICE_FAMILY: "1,2"
+    DEVELOPMENT_TEAM: ""
+    MARKETING_VERSION: "0.3.0"
+    CURRENT_PROJECT_VERSION: "3"
+targets:
+  ReelProof:
+    type: application
+    platform: iOS
+    sources: [ReelProof, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.reelproof.ios
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: ReelProof
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: ReelProof/Info.plist
+      properties:
+        ReelProofAppGroup: group.app.reelproof.shared
+        ReelProofBroadcastExtension: app.reelproof.ios.BroadcastExtension
+        CFBundleURLTypes: [{CFBundleURLSchemes: [reelproof]}]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+    entitlements:
+      path: ReelProof/ReelProof.entitlements
+      properties:
+        com.apple.security.application-groups: [group.app.reelproof.shared]
+    dependencies:
+      - target: BroadcastExtension
+        embed: true
+  BroadcastExtension:
+    type: app-extension
+    platform: iOS
+    sources: [BroadcastExtension, Shared]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.reelproof.ios.BroadcastExtension
+        APPLICATION_EXTENSION_API_ONLY: YES
+    info:
+      path: BroadcastExtension/Info.plist
+      properties:
+        ReelProofAppGroup: group.app.reelproof.shared
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.broadcast-services-upload
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SampleHandler
+          RPBroadcastProcessMode: RPBroadcastProcessModeSampleBuffer
+    entitlements:
+      path: BroadcastExtension/BroadcastExtension.entitlements
+      properties:
+        com.apple.security.application-groups: [group.app.reelproof.shared]
