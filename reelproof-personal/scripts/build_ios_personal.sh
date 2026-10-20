@@ -26,12 +26,16 @@ codesign --verify --deep --strict "$personal_app"
 "$personal_python" - "$personal_app" <<'PY'
 import json,plistlib,subprocess,sys
 from pathlib import Path
-app=Path(sys.argv[1]);identity=json.loads(Path('PersonalBuild.json').read_text())
+app=Path(sys.argv[1]);identity=json.loads(Path('PersonalBuild.json').read_text());versions=[]
 for target,bundle in [(app,identity['bundle']),(app/'PlugIns/BroadcastExtension.appex',identity['extension'])]:
  info=plistlib.loads((target/'Info.plist').read_bytes())
  assert info['CFBundleIdentifier']==bundle and info['ReelProofAppGroup']==identity['app_group']
+ assert info['CFBundleSupportedPlatforms']==['iPhoneOS']
+ versions.append((info['CFBundleVersion'],info['CFBundleShortVersionString']))
+ assert not list(target.glob('*.debug.dylib'))
  ent=plistlib.loads(subprocess.run(['codesign','-d','--entitlements',':-',str(target)],capture_output=True,check=True).stdout)
  assert ent['com.apple.security.application-groups']==[identity['app_group']]
+assert versions[0]==versions[1]
 PY
 personal_stage=$(mktemp -d "${TMPDIR:-/tmp}/reelproof-personal.XXXXXX")
 trap 'rm -rf -- "$personal_stage"' EXIT

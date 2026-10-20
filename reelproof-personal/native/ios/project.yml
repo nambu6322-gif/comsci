@@ -26,6 +26,8 @@ targets:
     info:
       path: ReelProof/Info.plist
       properties:
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
         ReelProofAppGroup: group.app.reelproof.shared
         ReelProofBroadcastExtension: app.reelproof.ios.BroadcastExtension
         CFBundleURLTypes: [{CFBundleURLSchemes: [reelproof]}]
@@ -49,6 +51,8 @@ targets:
     info:
       path: BroadcastExtension/Info.plist
       properties:
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
         ReelProofAppGroup: group.app.reelproof.shared
         NSExtension:
           NSExtensionPointIdentifier: com.apple.broadcast-services-upload
