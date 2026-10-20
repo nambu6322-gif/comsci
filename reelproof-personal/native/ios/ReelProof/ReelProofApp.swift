@@ -51,11 +51,11 @@ struct ContentView: View {
                 }.id("preparationStatus")
                 Text("화면 녹화 동의는 iOS의 필수 단계입니다. 제어 센터의 녹화를 중지하면 탐지도 종료됩니다. 원본 앱이 캡처를 막으면 추출할 수 없습니다.").font(.footnote).foregroundStyle(.secondary)
                 Text("서버 접근 키가 없으면 자막의 AI 대본 문체만 기기에서 분석합니다. 이 알림은 실험 신호이며 영상 제작 출처나 진위를 확정하지 않습니다. 실제 릴스 성능은 평가하지 않았습니다.").font(.footnote).foregroundStyle(.secondary)
-                DisclosureGroup("공유 권한 진단") {
+                DisclosureGroup("연결 권한 진단") {
                     Text(AppConfiguration.sharingDiagnostics).font(.caption).textSelection(.enabled)
                     Button("권한 진단 복사") { UIPasteboard.general.string = AppConfiguration.sharingDiagnostics }
                 }.font(.footnote)
-                Text("개인 테스트 0.4.4 (7)").font(.caption2).foregroundStyle(.secondary)
+                Text("개인 테스트 0.4.5 (8)").font(.caption2).foregroundStyle(.secondary)
             }.padding(28) }
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: showPicker) { ready in
@@ -80,12 +80,13 @@ struct ContentView: View {
             failSetup("검증 서버 주소를 확인하세요. https://reelproof-evidence.vercel.app 형식의 HTTPS 주소가 필요합니다.")
             return
         }
-        guard let store = AppConfiguration.sharedDefaults else {
-            failSetup("공유 설정 권한을 확인하지 못했습니다.\n\n\(AppConfiguration.sharingDiagnostics)\n\nApp Group이 실제로 허용된 프로필로 앱과 방송 확장을 함께 서명해야 합니다. iPhone의 마이크·알림 허용으로 추가되는 권한은 아닙니다.")
+        do {
+            let method = try AppConfiguration.saveConnection(endpoint: normalizedEndpoint, token: token.trimmingCharacters(in: .whitespacesAndNewlines))
+            message = method
+        } catch {
+            failSetup("방송 확장에 연결 설정을 전달하지 못했습니다. \(error.localizedDescription)\n\n\(AppConfiguration.sharingDiagnostics)\n\nSideloadly에서 앱 확장을 유지하고 Keychain Sharing 권한을 함께 서명하세요. 권한이 모두 제거된 경우 재설치가 필요합니다.")
             return
         }
-        store.set(normalizedEndpoint, forKey: "serverURL")
-        store.set(token.trimmingCharacters(in: .whitespacesAndNewlines), forKey: "serverToken")
         showPicker = true
         message = "준비되었습니다. 시스템 녹화 버튼에서 ReelProof 방송을 시작한 뒤 릴스 앱으로 이동하세요."
         // The system picker is available immediately; notification authorization

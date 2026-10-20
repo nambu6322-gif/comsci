@@ -14,6 +14,7 @@ assert spec['targets']['ReelProof']['dependencies']==[{'target':'BroadcastExtens
 for name,identifier in [('ReelProof',bundle),('BroadcastExtension',bundle+'.BroadcastExtension')]:
  target=spec['targets'][name];assert target['settings']['base']['PRODUCT_BUNDLE_IDENTIFIER']==identifier
  assert target['entitlements']['properties']['com.apple.security.application-groups']==['group.'+bundle+'.shared']
+ assert target['entitlements']['properties']['keychain-access-groups']==['$(AppIdentifierPrefix)'+bundle]
  assert target['info']['properties']['ReelProofAppGroup']=='group.'+bundle+'.shared'
  assert target['info']['properties']['CFBundleDisplayName'].strip(), 'iOS refuses to install app extensions without CFBundleDisplayName'
  assert base['targets'][name]['info']['properties']['CFBundleDisplayName'].strip()

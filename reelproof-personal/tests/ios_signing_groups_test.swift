@@ -23,6 +23,8 @@ import Foundation
         let renamed = original + ".TEAM123456"
         let other = "group.other.test"
         let fixture = executable([SigningGroups.entitlement:[renamed]])
+        let keychain = "ABCDE12345.app.reelproof.test"
+        expect(SigningGroups.signedEntitlements(executable(["keychain-access-groups":[keychain]]))?["keychain-access-groups"] as? [String] == [keychain], "Keychain groups read from actual signed metadata, independently of missing App Groups")
         expect(SigningGroups.signedGroups(fixture) == [renamed], "Read actual code-signature entitlement layout")
         expect(SigningGroups.signedGroups(executable([:])) == [], "Missing claim is not permission")
         for count in 0..<fixture.count {
@@ -55,6 +57,7 @@ import Foundation
                 let executable = target.appendingPathComponent(info["CFBundleExecutable"] as! String)
                 guard let groups = SigningGroups.signedGroups(try Data(contentsOf: executable)) else { fatalError("Cannot parse compiled target signing metadata") }
                 expect(groups == [info["ReelProofAppGroup"] as! String], "Read signed App Group in real compiled target")
+                expect((SigningGroups.signedEntitlements(try! Data(contentsOf: executable))?["keychain-access-groups"] as? [String])?.count == 1, "Compiled targets retain keychain sharing metadata")
                 read.append(groups)
             }
             expect(read[0] == read[1], "Real app and extension contain identical signed group claims")

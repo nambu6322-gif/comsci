@@ -3,13 +3,16 @@ import Vision
 import UserNotifications
 import AVFoundation
 final class SampleHandler: RPBroadcastSampleHandler {
-    let defaults = AppConfiguration.sharedDefaults
+    var connection: ServerConnection?
     let queue = DispatchQueue(label: "ReelProof.analysis")
     var selector: TextModel?; var modernStyle: TextModel?; var lastStyleAlert = 0.0; var lastFrame = 0.0; var lastText = ""; var analyzingFrame = false; var requesting = false; var active = false
     var writer: AVAssetWriter?; var audioInput: AVAssetWriterInput?; var audioURL: URL?; var audioStart = CMTime.zero
     override func broadcastStarted(withSetupInfo setupInfo: [String : NSObject]?) {
-        guard defaults != nil else {
-            finishBroadcastWithError(NSError(domain: "ReelProof", code: 1, userInfo: [NSLocalizedDescriptionKey: AppConfiguration.sharingDiagnostics]))
+        do {
+            connection = try AppConfiguration.loadConnection()
+            guard let value = connection, value.valid else { throw ConnectionKeychain.StorageError(status: -25300) }
+        } catch {
+            finishBroadcastWithError(NSError(domain: "ReelProof", code: 1, userInfo: [NSLocalizedDescriptionKey: "설정을 읽지 못했습니다. 앱에서 탐지 준비를 다시 누르세요. \(error.localizedDescription)\n\(AppConfiguration.sharingDiagnostics)"]))
             return
         }
         selector = try? TextModel(filename: "selector-model"); modernStyle = try? TextModel(filename: "modern-ai-text-model"); active = true
@@ -20,7 +23,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
     func discardAudio() { writer?.cancelWriting(); if let url = audioURL { try? FileManager.default.removeItem(at: url) }; writer = nil; audioInput = nil; audioURL = nil }
     override func processSampleBuffer(_ sampleBuffer: CMSampleBuffer, with sampleBufferType: RPSampleBufferType) {
         guard active else { return }
-        if sampleBufferType == .audioApp { if !(defaults?.string(forKey: "serverToken") ?? "").isEmpty { processAudio(sampleBuffer) }; return }
+        if sampleBufferType == .audioApp { if !(connection?.token ?? "").isEmpty { processAudio(sampleBuffer) }; return }
         guard sampleBufferType == .video, !analyzingFrame, Date().timeIntervalSince1970 - lastFrame >= 2, let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         lastFrame = Date().timeIntervalSince1970; analyzingFrame = true
         queue.async { [weak self] in
@@ -54,8 +57,8 @@ final class SampleHandler: RPBroadcastSampleHandler {
         }
     }
     func send(path: String, data: Data, type: String) {
-        guard active, !requesting, !(defaults?.string(forKey: "serverToken") ?? "").isEmpty, let base = defaults?.string(forKey: "serverURL"), let url = URL(string: base.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + path), url.scheme == "https" else { return }
-        requesting = true; var request = URLRequest(url: url); request.httpMethod = "POST"; request.httpBody = data; request.timeoutInterval = 45; request.setValue(type, forHTTPHeaderField: "Content-Type"); request.setValue("Bearer " + (defaults?.string(forKey: "serverToken") ?? ""), forHTTPHeaderField: "Authorization")
+        guard active, !requesting, !(connection?.token ?? "").isEmpty, let base = connection?.endpoint, let url = URL(string: base.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + path), url.scheme == "https" else { return }
+        requesting = true; var request = URLRequest(url: url); request.httpMethod = "POST"; request.httpBody = data; request.timeoutInterval = 45; request.setValue(type, forHTTPHeaderField: "Content-Type"); request.setValue("Bearer " + (connection?.token ?? ""), forHTTPHeaderField: "Authorization")
         URLSession.shared.dataTask(with: request) { [weak self] body, response, error in
             guard let self = self else { return }; defer { self.requesting = false }; guard self.active else { return }
             guard error == nil, (response as? HTTPURLResponse)?.statusCode == 200, let body = body, let value = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else { self.notify("판별 불가 · 서버 연결 확인", "오디오·주장 검증 서버에서 정상 응답을 받지 못했습니다."); return }

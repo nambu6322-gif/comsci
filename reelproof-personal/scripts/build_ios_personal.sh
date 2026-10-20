@@ -20,6 +20,16 @@ personal_extension="$personal_app/PlugIns/BroadcastExtension.appex"
 test -d "$personal_app" && test -d "$personal_extension"
 # Temporary ad-hoc code signatures preserve entitlement metadata for the user's
 # re-signing tool. These are NOT Apple's paid Ad Hoc distribution signatures.
+# Resolve only the public placeholder in temporary signatures. Sideloadly must
+# replace the temporary prefix with the actual Apple signing team's prefix.
+"$personal_python" - <<'ENTITLEMENTS'
+import plistlib
+from pathlib import Path
+for path in [Path('ReelProof/ReelProof.personal.entitlements'),Path('BroadcastExtension/BroadcastExtension.personal.entitlements')]:
+ value=plistlib.loads(path.read_bytes())
+ value['keychain-access-groups']=[x.replace('$(AppIdentifierPrefix)','REELPROOF0.') for x in value['keychain-access-groups']]
+ path.write_bytes(plistlib.dumps(value))
+ENTITLEMENTS
 codesign --force --sign - --timestamp=none --entitlements BroadcastExtension/BroadcastExtension.personal.entitlements "$personal_extension"
 codesign --force --sign - --timestamp=none --entitlements ReelProof/ReelProof.personal.entitlements "$personal_app"
 codesign --verify --deep --strict "$personal_app"
@@ -39,6 +49,7 @@ for target,bundle in [(app,identity['bundle']),(app/'PlugIns/BroadcastExtension.
  assert not list(target.glob('*.debug.dylib'))
  ent=plistlib.loads(subprocess.run(['codesign','-d','--entitlements',':-',str(target)],capture_output=True,check=True).stdout)
  assert ent['com.apple.security.application-groups']==[identity['app_group']]
+ assert ent['keychain-access-groups']==['REELPROOF0.'+identity['bundle']]
 assert versions[0]==versions[1]
 PY
 personal_stage=$(mktemp -d "${TMPDIR:-/tmp}/reelproof-personal.XXXXXX")
@@ -60,7 +71,7 @@ with zipfile.ZipFile(path) as archive:
   info=plistlib.loads(archive.read(name));display_name=info.get('CFBundleDisplayName')
   assert isinstance(display_name,str) and display_name.strip(), f'{name}: missing CFBundleDisplayName in packaged IPA'
   bundles.append({key:info[key] for key in ['CFBundleIdentifier','CFBundleDisplayName','CFBundleVersion','CFBundleShortVersionString']})
-report={'compiled':True,'signature':'temporary ad-hoc; user development signing required','signed_for_device':False,'installable_by_direct_download':False,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'bytes':path.stat().st_size,'identity':json.loads((root/'PersonalBuild.json').read_text()),'bundles':bundles,'signing_group_resolution_tests_passed':True,'physical_device_tested':False}
+report={'compiled':True,'signature':'temporary ad-hoc; user development signing required','signed_for_device':False,'installable_by_direct_download':False,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'bytes':path.stat().st_size,'identity':json.loads((root/'PersonalBuild.json').read_text()),'bundles':bundles,'signing_group_resolution_tests_passed':True,'shared_keychain_entitlements_verified':True,'physical_device_tested':False}
 (path.parent/'build-report.json').write_text(json.dumps(report,indent=2)+'\n')
 PY
 echo 'IPA compiled. It must be re-signed on Windows/Mac with your own Apple account before installation.'

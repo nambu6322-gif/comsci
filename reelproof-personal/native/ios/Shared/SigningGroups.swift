@@ -7,15 +7,17 @@ enum SigningGroups {
     static func groups(in dictionary: [String: Any]) -> [String] {
         (dictionary[entitlement] as? [String] ?? []).filter { $0.hasPrefix("group.") && !$0.contains("*") }
     }
-    static func profileGroups(_ data: Data) -> [String]? {
+    static func profileGroups(_ data: Data) -> [String]? { profileEntitlements(data).map(groups) }
+    static func profileEntitlements(_ data: Data) -> [String: Any]? {
         guard data.count <= 4 * 1024 * 1024,
               let start = data.range(of: Data("<plist".utf8)),
               let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex),
               let value = try? PropertyListSerialization.propertyList(from: data.subdata(in: start.lowerBound..<end.upperBound), format: nil) as? [String: Any],
               let entitlements = value["Entitlements"] as? [String: Any] else { return nil }
-        return groups(in: entitlements)
+        return entitlements
     }
-    static func signedGroups(_ data: Data) -> [String]? {
+    static func signedGroups(_ data: Data) -> [String]? { signedEntitlements(data).map(groups) }
+    static func signedEntitlements(_ data: Data) -> [String: Any]? {
         guard data.count >= 32, word(data, 0) == 0xfeedfacf,
               let commands = word(data, 16), commands < 4096 else { return nil }
         var cursor = 32
@@ -31,7 +33,7 @@ enum SigningGroups {
         }
         return nil
     }
-    private static func signatureGroups(_ data: Data) -> [String]? {
+    private static func signatureGroups(_ data: Data) -> [String: Any]? {
         guard word(data, 0, bigEndian: true) == 0xfade0cc0,
               let length = word(data, 4, bigEndian: true), Int(length) <= data.count,
               let count = word(data, 8, bigEndian: true), count < 1024,
@@ -46,7 +48,7 @@ enum SigningGroups {
                   let blobLength = word(data, start + 4, bigEndian: true), blobLength >= 8,
                   start <= Int(length), Int(blobLength) <= Int(length) - start,
                   let value = try? PropertyListSerialization.propertyList(from: data.subdata(in: (start + 8)..<(start + Int(blobLength))), format: nil) as? [String: Any] else { return nil }
-            return groups(in: value)
+            return value
         }
         return nil
     }
