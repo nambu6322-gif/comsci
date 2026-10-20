@@ -64,3 +64,21 @@ targets:
       path: BroadcastExtension/BroadcastExtension.entitlements
       properties:
         com.apple.security.application-groups: [group.app.reelproof.shared]
+  ReelProofUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: ReelProof
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.reelproof.preparationuitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: ReelProof
+schemes:
+  ReelProof:
+    build:
+      targets:
+        ReelProof: all
+    test:
+      targets: [ReelProofUITests]

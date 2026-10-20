@@ -32,6 +32,10 @@ jobs:
           REELPROOF_BUILD_PYTHON: ${{ runner.temp }}/reelproof-personal-tools/bin/python
           REELPROOF_PERSONAL_BUNDLE_ID: ${{ inputs.bundle_id }}
         run: bash scripts/build_ios_personal.sh
+      - name: Verify prepare button in iOS Simulator
+        env:
+          REELPROOF_BUILD_PYTHON: ${{ runner.temp }}/reelproof-personal-tools/bin/python
+        run: bash scripts/test_ios_personal_ui.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ReelProof-personal-IPA-requires-your-signature
