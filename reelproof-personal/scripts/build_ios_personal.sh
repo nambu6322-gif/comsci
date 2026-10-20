@@ -23,6 +23,8 @@ test -d "$personal_app" && test -d "$personal_extension"
 codesign --force --sign - --timestamp=none --entitlements BroadcastExtension/BroadcastExtension.personal.entitlements "$personal_extension"
 codesign --force --sign - --timestamp=none --entitlements ReelProof/ReelProof.personal.entitlements "$personal_app"
 codesign --verify --deep --strict "$personal_app"
+swiftc -swift-version 5 Shared/SigningGroups.swift "$task_root/tests/ios_signing_groups_test.swift" -o build/signing-groups-tests
+build/signing-groups-tests "$personal_app"
 "$personal_python" - "$personal_app" <<'PY'
 import json,plistlib,subprocess,sys
 from pathlib import Path
@@ -58,7 +60,7 @@ with zipfile.ZipFile(path) as archive:
   info=plistlib.loads(archive.read(name));display_name=info.get('CFBundleDisplayName')
   assert isinstance(display_name,str) and display_name.strip(), f'{name}: missing CFBundleDisplayName in packaged IPA'
   bundles.append({key:info[key] for key in ['CFBundleIdentifier','CFBundleDisplayName','CFBundleVersion','CFBundleShortVersionString']})
-report={'compiled':True,'signature':'temporary ad-hoc; user development signing required','signed_for_device':False,'installable_by_direct_download':False,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'bytes':path.stat().st_size,'identity':json.loads((root/'PersonalBuild.json').read_text()),'bundles':bundles,'physical_device_tested':False}
+report={'compiled':True,'signature':'temporary ad-hoc; user development signing required','signed_for_device':False,'installable_by_direct_download':False,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'bytes':path.stat().st_size,'identity':json.loads((root/'PersonalBuild.json').read_text()),'bundles':bundles,'signing_group_resolution_tests_passed':True,'physical_device_tested':False}
 (path.parent/'build-report.json').write_text(json.dumps(report,indent=2)+'\n')
 PY
 echo 'IPA compiled. It must be re-signed on Windows/Mac with your own Apple account before installation.'
