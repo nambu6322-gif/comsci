@@ -58,7 +58,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
     }
     func send(path: String, data: Data, type: String) {
         guard active, !requesting, !(connection?.token ?? "").isEmpty, let base = connection?.endpoint, let url = URL(string: base.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + path), url.scheme == "https" else { return }
-        requesting = true; var request = URLRequest(url: url); request.httpMethod = "POST"; request.httpBody = data; request.timeoutInterval = 45; request.setValue(type, forHTTPHeaderField: "Content-Type"); request.setValue("Bearer " + (connection?.token ?? ""), forHTTPHeaderField: "Authorization")
+        requesting = true; var request = URLRequest(url: url); request.httpMethod = "POST"; request.httpBody = data; request.timeoutInterval = 140; request.setValue(type, forHTTPHeaderField: "Content-Type"); request.setValue("Bearer " + (connection?.token ?? ""), forHTTPHeaderField: "Authorization")
         URLSession.shared.dataTask(with: request) { [weak self] body, response, error in
             guard let self = self else { return }; defer { self.requesting = false }; guard self.active else { return }
             guard error == nil, (response as? HTTPURLResponse)?.statusCode == 200, let body = body, let value = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else { self.notify("판별 불가 · 서버 연결 확인", "오디오·주장 검증 서버에서 정상 응답을 받지 못했습니다."); return }
