@@ -1,7 +1,11 @@
 # Windows에서 본인 iPhone·iPad에 설치하는 개인 테스트
 
-현재는 **개인 테스트 소스와 빌드 설정**입니다. 아직 macOS 컴파일을 실행하지
-못했으므로 실제 IPA 다운로드나 기기 설치 성공을 뜻하지 않습니다.
+2026년 10월 20일 macOS Actions에서 **개인 테스트 IPA 빌드에 성공했습니다.**
+앱과 방송 확장의 버전·App Group·ARM64 기기 실행 파일과 ZIP 무결성을
+확인했습니다. 실제 기기의 Apple 개발용 서명·설치·동작 검증은 아직입니다.
+
+다운로드: https://reelproof-mobile.vercel.app/downloads/reelproof-ios-personal.ipa
+빌드: https://github.com/nambu6322-gif/comsci/actions/runs/39358809587
 
 ## 만드는 앱
 
