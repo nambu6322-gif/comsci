@@ -1,11 +1,12 @@
 # Windows에서 본인 iPhone·iPad에 설치하는 개인 테스트
 
 2026년 10월 20일 macOS Actions에서 **개인 테스트 IPA 빌드에 성공했습니다.**
-앱과 방송 확장의 버전·App Group·ARM64 기기 실행 파일과 ZIP 무결성을
+0.4.2에서는 방송 확장의 필수 표시 이름 누락(`MissingBundleDisplayNameString`)을 수정했습니다.
+앱과 방송 확장의 표시 이름·버전·App Group·ARM64 기기 실행 파일과 ZIP 무결성을
 확인했습니다. 실제 기기의 Apple 개발용 서명·설치·동작 검증은 아직입니다.
 
 다운로드: https://reelproof-mobile.vercel.app/downloads/reelproof-ios-personal.ipa
-빌드: https://github.com/nambu6322-gif/comsci/actions/runs/39358809587
+빌드: https://github.com/nambu6322-gif/comsci/actions/runs/39416884775
 
 ## 만드는 앱
 
