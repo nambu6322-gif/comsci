@@ -15,6 +15,8 @@ for name,identifier in [('ReelProof',bundle),('BroadcastExtension',bundle+'.Broa
  target=spec['targets'][name];assert target['settings']['base']['PRODUCT_BUNDLE_IDENTIFIER']==identifier
  assert target['entitlements']['properties']['com.apple.security.application-groups']==['group.'+bundle+'.shared']
  assert target['info']['properties']['ReelProofAppGroup']=='group.'+bundle+'.shared'
+ assert target['info']['properties']['CFBundleDisplayName'].strip(), 'iOS refuses to install app extensions without CFBundleDisplayName'
+ assert base['targets'][name]['info']['properties']['CFBundleDisplayName'].strip()
  assert 'PROVISIONING_PROFILE_SPECIFIER' not in str(target)
 assert spec['targets']['ReelProof']['info']['properties']['ReelProofBroadcastExtension']==bundle+'.BroadcastExtension'
 for invalid in ['bad','app.reelproof;echo test','../invalid.bundle.id']:

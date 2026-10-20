@@ -31,6 +31,8 @@ for target,bundle in [(app,identity['bundle']),(app/'PlugIns/BroadcastExtension.
  info=plistlib.loads((target/'Info.plist').read_bytes())
  assert info['CFBundleIdentifier']==bundle and info['ReelProofAppGroup']==identity['app_group']
  assert info['CFBundleSupportedPlatforms']==['iPhoneOS']
+ display_name=info.get('CFBundleDisplayName')
+ assert isinstance(display_name,str) and display_name.strip(), f'{target}: missing CFBundleDisplayName prevents installation'
  versions.append((info['CFBundleVersion'],info['CFBundleShortVersionString']))
  assert not list(target.glob('*.debug.dylib'))
  ent=plistlib.loads(subprocess.run(['codesign','-d','--entitlements',':-',str(target)],capture_output=True,check=True).stdout)
@@ -44,14 +46,19 @@ ditto "$personal_app" "$personal_stage/Payload/ReelProof.app"
 personal_ipa="$PWD/personal-distribution/ReelProof-personal-resign-required.ipa"
 ditto -c -k --keepParent "$personal_stage/Payload" "$personal_ipa"
 "$personal_python" - "$personal_ipa" <<'PY'
-import hashlib,json,sys,zipfile
+import hashlib,json,plistlib,sys,zipfile
 from pathlib import Path
 path=Path(sys.argv[1]);root=Path.cwd()
 with zipfile.ZipFile(path) as archive:
  assert archive.testzip() is None
  assert 'Payload/ReelProof.app/Info.plist' in archive.namelist()
  assert 'Payload/ReelProof.app/PlugIns/BroadcastExtension.appex/Info.plist' in archive.namelist()
-report={'compiled':True,'signature':'temporary ad-hoc; user development signing required','signed_for_device':False,'installable_by_direct_download':False,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'bytes':path.stat().st_size,'identity':json.loads((root/'PersonalBuild.json').read_text()),'physical_device_tested':False}
+ bundles=[]
+ for name in ['Payload/ReelProof.app/Info.plist','Payload/ReelProof.app/PlugIns/BroadcastExtension.appex/Info.plist']:
+  info=plistlib.loads(archive.read(name));display_name=info.get('CFBundleDisplayName')
+  assert isinstance(display_name,str) and display_name.strip(), f'{name}: missing CFBundleDisplayName in packaged IPA'
+  bundles.append({key:info[key] for key in ['CFBundleIdentifier','CFBundleDisplayName','CFBundleVersion','CFBundleShortVersionString']})
+report={'compiled':True,'signature':'temporary ad-hoc; user development signing required','signed_for_device':False,'installable_by_direct_download':False,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'bytes':path.stat().st_size,'identity':json.loads((root/'PersonalBuild.json').read_text()),'bundles':bundles,'physical_device_tested':False}
 (path.parent/'build-report.json').write_text(json.dumps(report,indent=2)+'\n')
 PY
 echo 'IPA compiled. It must be re-signed on Windows/Mac with your own Apple account before installation.'

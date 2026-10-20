@@ -26,6 +26,7 @@ targets:
     info:
       path: ReelProof/Info.plist
       properties:
+        CFBundleDisplayName: ReelProof
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         ReelProofAppGroup: group.app.reelproof.shared
@@ -51,6 +52,7 @@ targets:
     info:
       path: BroadcastExtension/Info.plist
       properties:
+        CFBundleDisplayName: ReelProof Broadcast
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleShortVersionString: $(MARKETING_VERSION)
         ReelProofAppGroup: group.app.reelproof.shared
