@@ -19,5 +19,5 @@ xcodebuild -project ReelProof.xcodeproj -scheme ReelProof -configuration Debug \
 "$personal_python" - <<'PY'
 import json
 from pathlib import Path
-Path('personal-distribution/ui-test-status.json').write_text(json.dumps({'simulator_ui_tests_passed':True,'checks':['left and right prepare button hit areas','keyboard dismissal','invalid server alert','valid server produces next step or visible signing error'],'physical_device_tested':False},indent=2)+'\n')
+Path('personal-distribution/ui-test-status.json').write_text(json.dumps({'simulator_ui_tests_passed':True,'checks':['left and right prepare button hit areas','keyboard dismissal','invalid server alert','valid server produces controls or QR pairing key instructions'],'physical_device_tested':False},indent=2)+'\n')
 PY

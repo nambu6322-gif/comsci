@@ -18,7 +18,7 @@ import Vision
         expect((try? pairing.validated(now: now)) == nil, message)
     }
     static func main() throws {
-        let now = Date().timeIntervalSince1970
+        let now = floor(Date().timeIntervalSince1970)
         let good = try BroadcastPairing.create(token: token(now: now), now: now)
         let value = try good.validated(now: now)
         expect(value.endpoint == BroadcastPairing.productionEndpoint && value.valid, "Pinned HTTPS endpoint")
