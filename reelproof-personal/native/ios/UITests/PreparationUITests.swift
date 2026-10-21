@@ -8,12 +8,16 @@ final class PreparationUITests: XCTestCase {
         app.launch()
     }
     private func setEndpoint(_ value: String) {
+        // Use the launch argument defaults domain for deterministic fixtures.
+        // Deleting characters from a tapped URL can leave a suffix when iOS
+        // places the insertion point in the middle of the existing value.
+        app.terminate()
+        app.launchArguments = ["-serverURL", value, "-serverToken", ""]
+        app.launch()
         let field = app.textFields["serverEndpoint"]
         XCTAssertTrue(field.waitForExistence(timeout: 10))
+        XCTAssertEqual(field.value as? String, value)
         field.tap()
-        let existing = field.value as? String ?? ""
-        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
-        field.typeText(value)
     }
     func testBothSidesOfPrepareButtonHandleTapAndDismissKeyboard() {
         setEndpoint("http://invalid.example")
@@ -39,8 +43,9 @@ final class PreparationUITests: XCTestCase {
         let expectation = XCTNSPredicateExpectation(predicate: ready, object: app)
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
         if app.alerts["탐지 준비 확인"].exists {
-            XCTAssertTrue(app.alerts.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "QR")).firstMatch.exists)
-            XCTAssertTrue(app.alerts.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "접근 키")).firstMatch.exists)
+            let visible = app.alerts.staticTexts.allElementsBoundByIndex.map { $0.label }.joined(separator: "\n")
+            XCTAssertTrue(visible.contains("QR"), visible)
+            XCTAssertTrue(visible.contains("접근 키"), visible)
         } else {
             XCTAssertTrue(app.otherElements["broadcastControls"].exists)
         }
