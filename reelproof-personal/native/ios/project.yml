@@ -75,10 +75,20 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: app.reelproof.preparationuitests
         GENERATE_INFOPLIST_FILE: YES
         TEST_TARGET_NAME: ReelProof
+  ReelProofTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [UnitTests]
+    dependencies:
+      - target: ReelProof
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.reelproof.picker-tests
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   ReelProof:
     build:
       targets:
         ReelProof: all
     test:
-      targets: [ReelProofUITests]
+      targets: [ReelProofUITests, ReelProofTests]

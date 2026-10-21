@@ -51,15 +51,16 @@ enum AppConfiguration {
         }
         return groups(hostBundle).intersection(groups(uploadBundle)).sorted().first
     }
-    static func saveConnection(endpoint: String, token: String) throws -> String {
+    static func saveConnection(endpoint: String, token: String, sessionID: String? = nil) throws -> String {
         // A common, signed keychain group does not require a shared filesystem.
         // SecItemAdd/Update is the runtime authority; metadata alone grants nothing.
         if let group = sharedKeychainGroup {
-            try ConnectionKeychain.save(ServerConnection(endpoint: endpoint, token: token), group: group)
+            try ConnectionKeychain.save(ServerConnection(endpoint: endpoint, token: token, sessionID: sessionID), group: group)
             return "공유 키체인으로 연결 설정을 저장했습니다."
         }
         if let store = sharedDefaults {
             store.set(endpoint, forKey: "serverURL"); store.set(token, forKey: "serverToken")
+            store.set(sessionID, forKey: "broadcastSessionID")
             return "App Group으로 연결 설정을 저장했습니다."
         }
         throw ConnectionKeychain.StorageError(status: -34018)
@@ -67,11 +68,12 @@ enum AppConfiguration {
     static func loadConnection() throws -> ServerConnection? {
         if let group = sharedKeychainGroup, let connection = try ConnectionKeychain.load(group: group) { return connection }
         guard let store = sharedDefaults, let endpoint = store.string(forKey: "serverURL") else { return nil }
-        return ServerConnection(endpoint: endpoint, token: store.string(forKey: "serverToken") ?? "")
+        return ServerConnection(endpoint: endpoint, token: store.string(forKey: "serverToken") ?? "", sessionID: store.string(forKey: "broadcastSessionID"))
     }
     static var sharingDiagnostics: String {
         func display(_ groups: [String]?) -> String { groups.map { $0.isEmpty ? "없음" : $0.joined(separator: ", ") } ?? "읽지 못함" }
-        return ["공통 서명 키체인: \(sharedKeychainGroup ?? "없음")", sharing.reason,
+        let path = sharedKeychainGroup == nil && sharing.group == nil ? "공유 저장소 사용 불가 · 탐지 준비에서 자동 화면 연결 사용" : "공유 저장소 연결 사용 가능"
+        return [path, "공통 서명 키체인: \(sharedKeychainGroup ?? "없음")",
                 "구성 그룹: \(configuredAppGroup)",
                 "앱 서명 그룹: \(display(claims(hostBundle)))",
                 "방송 확장 서명 그룹: \(display(claims(uploadBundle)))",

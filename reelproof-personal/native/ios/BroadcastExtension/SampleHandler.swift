@@ -4,6 +4,7 @@ import UserNotifications
 import AVFoundation
 final class SampleHandler: RPBroadcastSampleHandler {
     var connection: ServerConnection?
+    var statusObserver: BroadcastEvents.Observer?
     var sessionExpiry: TimeInterval?
     var pairingDeadline = 0.0
     var validatingPairing = false
@@ -21,11 +22,12 @@ final class SampleHandler: RPBroadcastSampleHandler {
             self.selector = try? TextModel(filename: "selector-model")
             self.modernStyle = try? TextModel(filename: "modern-ai-text-model")
             self.active = true
+            if self.connection != nil { self.announceConnection() }
         }
     }
     override func broadcastPaused() { queue.async { self.active = false; self.discardAudio() } }
-    override func broadcastResumed() { queue.async { self.active = true } }
-    override func broadcastFinished() { queue.async { self.active = false; self.connection = nil; self.discardAudio() } }
+    override func broadcastResumed() { queue.async { self.active = true; if self.connection != nil { self.announceConnection() } } }
+    override func broadcastFinished() { queue.async { BroadcastEvents.post(session: self.connection?.sessionID, event: .stopped); self.statusObserver = nil; self.active = false; self.connection = nil; self.discardAudio() } }
     func discardAudio() { writer?.cancelWriting(); if let url = audioURL { try? FileManager.default.removeItem(at: url) }; writer = nil; audioInput = nil; audioURL = nil }
     override func processSampleBuffer(_ sampleBuffer: CMSampleBuffer, with sampleBufferType: RPSampleBufferType) {
         guard sampleBufferType == .video || sampleBufferType == .audioApp else { return }
@@ -50,7 +52,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
         }
         if connection == nil {
             guard now < pairingDeadline else {
-                stop("연결 QR을 읽지 못했습니다. ReelProof에서 탐지 준비를 다시 누르고, 방송 시작 후 연결 완료 알림까지 QR 화면을 유지하세요."); return
+                stop("자동 연결을 완료하지 못했습니다. ReelProof에서 탐지 준비를 다시 누르고 ‘탐지 중’이 표시될 때까지 앱 화면을 유지하세요."); return
             }
             guard sampleBufferType == .video, !validatingPairing, now - lastFrame >= 0.5,
                   now - lastPairingAttempt >= 3, let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
@@ -93,13 +95,29 @@ final class SampleHandler: RPBroadcastSampleHandler {
                 }
                 self.connection = pending; self.sessionExpiry = expiry
                 self.lastText = ""; self.lastFrame = Date().timeIntervalSince1970
-                self.notify("방송 연결 완료", "이제 릴스·쇼츠 앱으로 이동하세요. 연결 키는 최대 30분 동안 유효합니다.")
+                self.announceConnection()
+                self.notify("탐지 시작 · 릴스를 시청하세요", "음성·자막에서 검증할 주장을 골라 원문과 대조하고 결과를 알립니다.")
             }
         }.resume()
     }
     private func stop(_ message: String) {
+        BroadcastEvents.post(session: connection?.sessionID, event: .stopped)
+        statusObserver = nil
         active = false; connection = nil; discardAudio()
         finishBroadcastWithError(NSError(domain: "ReelProof", code: 2, userInfo: [NSLocalizedDescriptionKey: message]))
+    }
+    private func announceConnection() {
+        guard let session = connection?.sessionID else { return }
+        let observer = BroadcastEvents.Observer()
+        observer.listen(session: session) { [weak self] event in
+            guard event == .statusRequest, let self = self else { return }
+            self.queue.async {
+                guard self.connection?.sessionID == session else { return }
+                BroadcastEvents.post(session: session, event: self.active ? .connected : .stopped)
+            }
+        }
+        statusObserver = observer
+        BroadcastEvents.post(session: session, event: .connected)
     }
     func analyzeStyle(_ text: String) {
         guard text.count >= 80, text.split(whereSeparator: { $0.isWhitespace }).count >= 12, text.unicodeScalars.filter({ $0.value >= 0xAC00 && $0.value <= 0xD7A3 }).count >= 20, Date().timeIntervalSince1970 - lastStyleAlert >= 30, let model = modernStyle, model.score(text) >= model.threshold else { return }

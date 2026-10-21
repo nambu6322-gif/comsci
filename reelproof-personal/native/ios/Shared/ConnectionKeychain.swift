@@ -4,6 +4,7 @@ import Security
 struct ServerConnection: Codable {
     let endpoint: String
     let token: String
+    var sessionID: String? = nil
     var valid: Bool {
         guard let url = URL(string: endpoint) else { return false }
         return url.scheme == "https" && url.host != nil && url.user == nil && url.password == nil

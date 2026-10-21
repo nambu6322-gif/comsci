@@ -57,7 +57,7 @@ struct BroadcastPairing: Codable {
               expiry.doubleValue > now + 5, expiry.doubleValue <= issued.doubleValue + 1800 else {
             throw PairingError(reason: "연결 QR이 만료되었거나 올바르지 않습니다. 앱에서 탐지 준비를 다시 누르세요.")
         }
-        return ServerConnection(endpoint: server, token: token)
+        return ServerConnection(endpoint: server, token: token, sessionID: nonce)
     }
     static func decode(_ text: String, now: TimeInterval = Date().timeIntervalSince1970) throws -> BroadcastPairing {
         guard text.utf8.count <= 2048, let data = text.data(using: .utf8) else { throw PairingError(reason: "연결 QR 형식 오류") }

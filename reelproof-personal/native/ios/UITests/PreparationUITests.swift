@@ -32,22 +32,15 @@ final class PreparationUITests: XCTestCase {
         }
         XCTAssertFalse(app.keyboards.firstMatch.exists)
     }
-    func testValidServerShowsControlsOrQRKeyInstructionsWhenSharingIsMissing() {
+    func testValidServerRequiresKeyBeforeOpeningSystemBroadcast() {
         setEndpoint("https://reelproof-evidence.vercel.app")
         app.buttons["prepareDetection"].tap()
-        // No secret, live API call or simulator entitlement grants are required.
-        // Missing shared rights now direct users to QR pairing with an app key.
-        let ready = NSPredicate { [self] _, _ in
-            app.alerts["탐지 준비 확인"].exists || app.otherElements["broadcastControls"].exists
-        }
-        let expectation = XCTNSPredicateExpectation(predicate: ready, object: app)
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
-        if app.alerts["탐지 준비 확인"].exists {
-            let visible = app.alerts.staticTexts.allElementsBoundByIndex.map { $0.label }.joined(separator: "\n")
-            XCTAssertTrue(visible.contains("QR"), visible)
-            XCTAssertTrue(visible.contains("접근 키"), visible)
-        } else {
-            XCTAssertTrue(app.otherElements["broadcastControls"].exists)
-        }
+        // No secret or live API call: no active/recording state before a key and
+        // the real extension's status signal. Preparing is not detecting.
+        XCTAssertTrue(app.alerts["탐지 준비 확인"].waitForExistence(timeout: 5))
+        let visible = app.alerts.staticTexts.allElementsBoundByIndex.map { $0.label }.joined(separator: "\n")
+        XCTAssertTrue(visible.contains("접근 키"), visible)
+        XCTAssertFalse(app.otherElements["broadcastControls"].exists)
+        XCTAssertFalse(app.staticTexts["detectionActive"].exists)
     }
 }
