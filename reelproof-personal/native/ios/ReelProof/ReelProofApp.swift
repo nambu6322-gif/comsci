@@ -17,19 +17,27 @@ final class NotificationDelegate: NSObject, UIApplicationDelegate, UNUserNotific
 final class BroadcastSessionStatus: ObservableObject {
     enum Phase: Equatable { case idle, waiting, detecting, stopped }
     @Published private(set) var phase = Phase.idle
+    @Published private(set) var progress: [String: String] = [:]
+    @Published private(set) var progressAt: Date?
     private var session: String?
     private let observer = BroadcastEvents.Observer()
     func wait(for session: String) {
-        self.session = session; phase = .waiting
+        self.session = session; phase = .waiting; progress = [:]; progressAt = nil
         observer.listen(session: session) { [weak self] event in
             switch event {
             case .connected: self?.phase = .detecting
             case .stopped: self?.phase = .stopped
             case .statusRequest: break
+            default:
+                if let value = event.progress { self?.progress[value.category] = value.message; self?.progressAt = Date() }
             }
         }
     }
-    func reset() { observer.stop(); session = nil; phase = .idle }
+    func reset() { observer.stop(); session = nil; phase = .idle; progress = [:]; progressAt = nil }
+    var diagnosticSummary: String {
+        let rows = progress.keys.sorted().map { "\($0): \(progress[$0] ?? "")" }
+        return (["ReelProof 0.4.8 (11)", "방송 상태: \(phase)"] + rows + ["마지막 상태 수신: \(progressAt.map { ISO8601DateFormatter().string(from: $0) } ?? "없음")"]).joined(separator: "\n")
+    }
     func refresh(recording: Bool) {
         guard let session = session else { return }
         guard recording else { observer.stop(); self.session = nil; phase = .stopped; return }
@@ -54,6 +62,7 @@ struct ContentView: View {
     @State private var setupError = ""
     @State private var showSetupError = false
     @State private var needsNotificationSettings = false
+    @State private var notificationTest = ""
     @FocusState private var focusedField: Field?
     private enum Field: Hashable { case endpoint, token }
     let green = Color(red: 0.10, green: 0.29, blue: 0.23)
@@ -111,11 +120,24 @@ struct ContentView: View {
                 }.id("preparationStatus")
                 Text("iOS의 방송 시작 확인은 필수입니다. 탐지는 제어 센터의 화면 녹화 중지로 종료합니다. 캡처가 보호된 영상은 추출할 수 없습니다.").font(.footnote).foregroundStyle(.secondary)
                 Text("근거가 부족하면 판별 불가로 알립니다. AI 대본 문체 알림은 참고 신호이며 영상의 AI 제작 여부를 확정하지 않습니다.").font(.footnote).foregroundStyle(.secondary)
+                DisclosureGroup("탐지 진행 확인") {
+                    Text(broadcast.diagnosticSummary).font(.caption).textSelection(.enabled).accessibilityIdentifier("pipelineDiagnostics")
+                    Button("진행 상태 복사") { UIPasteboard.general.string = broadcast.diagnosticSummary }
+                    Button("알림 테스트") {
+                        let content = UNMutableNotificationContent(); content.title = "ReelProof 알림 테스트"
+                        content.body = "검증 결과가 아닌 알림 전달 테스트입니다."
+                        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "reelproof-notification-test", content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 3, repeats: false))) { error in
+                            DispatchQueue.main.async { notificationTest = error == nil ? "3초 뒤 알림을 보내도록 예약했습니다. 집중 모드와 알림 요약 설정도 표시 여부에 영향을 줍니다." : "알림 요청을 예약하지 못했습니다. iPhone의 ReelProof 알림 설정을 확인하세요." }
+                        }
+                    }
+                    if !notificationTest.isEmpty { Text(notificationTest).font(.caption) }
+                    Text("진행 상태에는 접근 키·자막 원문·음성이 포함되지 않습니다. 알림센터에 요청이 전달돼도 집중 모드 등으로 배너가 보이지 않을 수 있습니다.").font(.caption).foregroundStyle(.secondary)
+                }.font(.footnote)
                 DisclosureGroup("공유 저장소 진단 · 자동 연결과 별도") {
                     Text(AppConfiguration.sharingDiagnostics).font(.caption).textSelection(.enabled)
                     Button("권한 진단 복사") { UIPasteboard.general.string = AppConfiguration.sharingDiagnostics }
                 }.font(.footnote)
-                Text("개인 테스트 0.4.7 (10)").font(.caption2).foregroundStyle(.secondary)
+                Text("개인 테스트 0.4.8 (11)").font(.caption2).foregroundStyle(.secondary)
             }.padding(28) }
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: showPicker) { ready in
