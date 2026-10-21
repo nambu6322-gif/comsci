@@ -11,7 +11,7 @@ def personal_spec(base,bundle,team=''):
  if not re.fullmatch(r'[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+){2,}',bundle):raise ValueError('Invalid personal bundle ID')
  if team and not re.fullmatch(r'[A-Z0-9]{10}',team):raise ValueError('Expected a 10-character Apple Team ID')
  spec=copy.deepcopy(base);group='group.'+bundle+'.shared';extension=bundle+'.BroadcastExtension'
- spec['settings']['base'].update(CODE_SIGN_STYLE='Automatic',DEVELOPMENT_TEAM=team,MARKETING_VERSION='0.4.5',CURRENT_PROJECT_VERSION='8',ENABLE_DEBUG_DYLIB='NO')
+ spec['settings']['base'].update(CODE_SIGN_STYLE='Automatic',DEVELOPMENT_TEAM=team,MARKETING_VERSION='0.4.6',CURRENT_PROJECT_VERSION='9',ENABLE_DEBUG_DYLIB='NO')
  for name,identifier in [('ReelProof',bundle),('BroadcastExtension',extension)]:
   target=spec['targets'][name]
   target['settings']['base']['PRODUCT_BUNDLE_IDENTIFIER']=identifier

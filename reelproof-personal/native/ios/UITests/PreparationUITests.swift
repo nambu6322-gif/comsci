@@ -28,18 +28,19 @@ final class PreparationUITests: XCTestCase {
         }
         XCTAssertFalse(app.keyboards.firstMatch.exists)
     }
-    func testValidServerAlwaysShowsNextStepOrVisibleSigningError() {
+    func testValidServerShowsControlsOrQRKeyInstructionsWhenSharingIsMissing() {
         setEndpoint("https://reelproof-evidence.vercel.app")
         app.buttons["prepareDetection"].tap()
-        // A Simulator is not proof of device signing. Both a visible signing
-        // error and the immediately available ReplayKit controls are valid.
+        // No secret, live API call or simulator entitlement grants are required.
+        // Missing shared rights now direct users to QR pairing with an app key.
         let ready = NSPredicate { [self] _, _ in
             app.alerts["탐지 준비 확인"].exists || app.otherElements["broadcastControls"].exists
         }
         let expectation = XCTNSPredicateExpectation(predicate: ready, object: app)
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
         if app.alerts["탐지 준비 확인"].exists {
-            XCTAssertTrue(app.alerts.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "연결 설정을 전달하지 못했습니다")).firstMatch.exists)
+            XCTAssertTrue(app.alerts.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "QR")).firstMatch.exists)
+            XCTAssertTrue(app.alerts.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "접근 키")).firstMatch.exists)
         } else {
             XCTAssertTrue(app.otherElements["broadcastControls"].exists)
         }
