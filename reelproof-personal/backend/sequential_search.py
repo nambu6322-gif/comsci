@@ -1,47 +1,56 @@
-"""Explicit sequential cosine search for LightRAG original-text chunks.
+"""Python buffer bridge to the C sequential search used by LightRAG.
 
 The loop compares every stored vector once. It keeps the best k matches instead
 of stopping at the first plausible match. No LLM is called for individual rows.
 """
-import heapq
+import ctypes
+from functools import lru_cache
 import logging
+from pathlib import Path
+import platform
 import numpy as np
 
 logger = logging.getLogger('reelproof.retrieval')
 STRATEGY = 'sequential_cosine_scan'
 
 
-def sequential_top_k(query, vectors, top_k=4, threshold=None):
-    """Return (row_index, similarity) in descending similarity order.
+@lru_cache(maxsize=1)
+def load_native():
+    suffix = '.dll' if platform.system() == 'Windows' else '.dylib' if platform.system() == 'Darwin' else '.so'
+    library = ctypes.CDLL(str(Path(__file__).with_name('_reelproof_scan' + suffix)))
+    library.rp_scan_implementation.restype = ctypes.c_char_p
+    if library.rp_scan_implementation() != b'c-sequential-cosine-v1':
+        raise RuntimeError('Unexpected native search implementation')
+    pointer = ctypes.POINTER(ctypes.c_float)
+    library.rp_sequential_search.argtypes = [pointer, pointer, ctypes.c_size_t,
+        ctypes.c_size_t, ctypes.c_size_t, ctypes.c_int, ctypes.c_double,
+        ctypes.POINTER(ctypes.c_size_t), pointer, ctypes.POINTER(ctypes.c_size_t)]
+    library.rp_sequential_search.restype = ctypes.c_int
+    return library
 
-    Time: O(N * D + N * log(k)); auxiliary space: O(k + D).
-    N is the number of chunks and D is the embedding dimension. Equal scores
-    keep original row order so results are deterministic.
-    """
-    query = np.asarray(query, dtype=np.float32)
+
+def sequential_top_k(query, vectors, top_k=4, threshold=None):
+    """Call the actual C scan; Python only prepares and returns typed buffers."""
+    query = np.ascontiguousarray(query, dtype=np.float32)
+    vectors = np.ascontiguousarray(vectors, dtype=np.float32)
     if query.ndim != 1 or vectors.ndim != 2 or vectors.shape[1] != len(query):
         raise ValueError('Query and stored vector dimensions must match')
     if top_k <= 0:
         return []
-    norm = float(np.linalg.norm(query))
-    if not np.isfinite(query).all() or not np.isfinite(norm) or norm == 0:
-        raise ValueError('Query embedding must be finite and nonzero')
-    query = query / norm
-    best = []
-    # SEQUENTIAL SEARCH: visit stored vectors one by one, from first to last.
-    # LightRAG/NanoVectorDB has already normalized the stored vectors.
-    for index, vector in enumerate(vectors):
-        similarity = float(np.dot(vector, query))
-        if not np.isfinite(similarity):
-            continue
-        if threshold is not None and similarity < threshold:
-            continue
-        candidate = (similarity, -index)
-        if len(best) < top_k:
-            heapq.heappush(best, candidate)
-        elif candidate > best[0]:
-            heapq.heapreplace(best, candidate)
-    return [(-negative_index, score) for score, negative_index in sorted(best, reverse=True)]
+    capacity = min(top_k, max(len(vectors), 1))
+    indices = np.empty(capacity, dtype=np.uintp)
+    scores = np.empty(capacity, dtype=np.float32)
+    count = ctypes.c_size_t()
+    pointer = ctypes.POINTER(ctypes.c_float)
+    status = load_native().rp_sequential_search(
+        query.ctypes.data_as(pointer), vectors.ctypes.data_as(pointer),
+        len(vectors), len(query), capacity, threshold is not None,
+        float(threshold) if threshold is not None else 0.0,
+        indices.ctypes.data_as(ctypes.POINTER(ctypes.c_size_t)),
+        scores.ctypes.data_as(pointer), ctypes.byref(count))
+    if status == -3: raise MemoryError('Unable to allocate C query buffer')
+    if status: raise ValueError('Invalid C search dimensions, threshold or embedding')
+    return list(zip(indices[:count.value].tolist(), scores[:count.value].tolist()))
 
 
 class SequentialChunkQuery:
@@ -80,5 +89,7 @@ def install_sequential_search(rag):
     from lightrag.kg.nano_vector_db_impl import NanoVectorDBStorage
     if not isinstance(rag.chunks_vdb, NanoVectorDBStorage):
         raise TypeError('Sequential search requires NanoVectorDB chunk storage')
+    load_native()  # Fail initialization if the compiled C implementation is absent.
     rag.chunks_vdb.query = SequentialChunkQuery(rag.chunks_vdb)
     rag.reelproof_retrieval_strategy = STRATEGY
+    rag.reelproof_retrieval_implementation = "c"

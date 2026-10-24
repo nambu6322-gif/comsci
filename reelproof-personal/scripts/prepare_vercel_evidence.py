@@ -11,7 +11,7 @@ for folder in ['models','index_snapshot','data']:
    f={'file':name,'sha':hashlib.sha1(data).hexdigest(),'size':len(data)};files.append(f)
    if folder=='index_snapshot':uploads.append({'path':str(p),'bytes':len(data),'sha':f['sha']})
   else:files.append({'file':name,'data':p.read_bytes().decode('utf-8'),'encoding':'utf-8'})
-for name in ['app.py','sequential_search.py','openai_backend.py','web_evidence.py','requirements.txt','pyproject.toml','vercel.json']:files.append({'file':name,'data':(r/'backend'/name).read_bytes().decode('utf-8'),'encoding':'utf-8'})
+for name in ['app.py','sequential_search.py','sequential_search.c','sequential_search.h','build_c_search.py','openai_backend.py','web_evidence.py','requirements.txt','pyproject.toml','vercel.json']:files.append({'file':name,'data':(r/'backend'/name).read_bytes().decode('utf-8'),'encoding':'utf-8'})
 marker=set(json.loads((r/'backend/index_snapshot/reelproof-docs.json').read_text()))
 for entry in files:
  if entry['file'].startswith('data/') and entry['file'].endswith('.txt'):
