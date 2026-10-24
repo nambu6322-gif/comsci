@@ -15,7 +15,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
     var selector: TextModel?, modernStyle: TextModel?
     var lastStyleAlert = 0.0, lastFrame = 0.0, lastText = ""
     let work = VerificationWorkQueue()
-    var tasks: [VerificationWorkQueue.Lane: URLSessionDataTask] = [:]
+    var tasks: [VerificationWorkQueue.Lane: Task<Void, Never>] = [:]
     var diagnostics: [String: BroadcastEvents.Event] = [:]
     var eventTimes: [BroadcastEvents.Event: TimeInterval] = [:], noticeTimes: [String: TimeInterval] = [:]
     var watchdog: DispatchSourceTimer?
@@ -195,7 +195,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
     }
     private func start(_ item: VerificationWorkQueue.Work) {
         guard active, let connection = connection, connection.valid else { return }
-        let path = item.lane == .screen ? "/v1/analyze" : "/v1/audio"
+        let path = item.lane == .screen ? "/v1/analyze/stream" : "/v1/audio/stream"
         guard let url = URL(string: connection.endpoint.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + path) else { return }
         if let expiry = sessionExpiry, Date().timeIntervalSince1970 >= expiry { stop("방송 연결 키가 만료되었습니다. 탐지 준비를 다시 눌러주세요."); return }
         if firstRequestAt == nil { firstRequestAt = now }
@@ -207,23 +207,50 @@ final class SampleHandler: RPBroadcastSampleHandler {
             guard let self = self, self.active, self.work.active[item.lane]?.id == item.id else { return }
             self.notice(key: "progress", title: "검증 중 · 아직 판정 없음", message: String(item.preview.prefix(80)) + "\n서버 응답을 기다리고 있습니다. 결과는 이 주장에 대한 알림으로 전달합니다.", interval: 20)
         }
-        let task = BroadcastHTTPClient.session.dataTask(with: request) { [weak self] data, response, error in
+        let task = Task { [weak self] in
             guard let self = self else { return }
-            self.queue.async {
-                guard self.active, self.work.active[item.lane]?.id == item.id else { return }
-                self.tasks[item.lane] = nil
-                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-                let value = data.flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String:Any] }
-                let success = error == nil && status == 200 && self.handle(value, item: item)
-                if !success {
-                    self.record(item.lane == .screen ? .screenFailed : .audioRequestFailed)
-                    let reason = status == 401 || status == 403 ? "검증 서버 접근 키가 올바르지 않거나 만료되었습니다." : (error as? URLError)?.code == .timedOut || status == 504 ? "서버 응답 시간이 초과됐습니다. 이 주장은 아직 판정하지 못했습니다." : "검증 서버가 정상 응답하지 않았습니다. HTTP \(status). 앱의 진행 상태를 확인하세요."
-                    self.notice(key: "server-error", title: "검증 실패 · 서버 연결 확인", message: String(item.preview.prefix(60)) + "\n" + reason, interval: 20)
+            var status = 0
+            do {
+                let (bytes, response) = try await BroadcastHTTPClient.session.bytes(for: request)
+                status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                guard status == 200, response.mimeType == "application/x-ndjson" else {
+                    throw VerificationStream.Failure(status: status, message: "검증 연결 응답 오류")
                 }
-                if let next = self.work.finish(item, success: success, now: self.now), self.active { self.start(next) }
+                var stream = VerificationStream()
+                for try await line in bytes.lines {
+                    try Task.checkCancellation()
+                    guard let event = try stream.consume(line) else { continue }
+                    switch event {
+                    case .result(let value):
+                        let accepted: Bool = await withCheckedContinuation { continuation in
+                            self.queue.async {
+                                guard self.active, self.work.active[item.lane]?.id == item.id else { continuation.resume(returning: false); return }
+                                continuation.resume(returning: self.handle(value, item: item))
+                            }
+                        }
+                        guard accepted else { throw VerificationStream.Failure(status: 502, message: "검증 결과 형식 오류") }
+                    case .done: break
+                    }
+                    if stream.finished { break }
+                }
+                guard stream.finished else { throw VerificationStream.Failure(status: 502, message: "검증 응답 연결이 중간에 끊겼습니다.") }
+                self.queue.async { self.complete(item, success: true, status: status, error: nil) }
+            } catch {
+                let code = (error as? VerificationStream.Failure)?.status ?? status
+                self.queue.async { self.complete(item, success: false, status: code, error: error) }
             }
         }
-        tasks[item.lane] = task;task.resume()
+        tasks[item.lane] = task
+    }
+    private func complete(_ item: VerificationWorkQueue.Work, success: Bool, status: Int, error: Error?) {
+        guard active, work.active[item.lane]?.id == item.id else { return }
+        tasks[item.lane] = nil
+        if !success {
+            record(item.lane == .screen ? .screenFailed : .audioRequestFailed)
+            let reason = status == 401 || status == 403 ? "검증 서버 연결이 만료되었습니다. 앱에서 탐지 준비를 다시 눌러주세요." : (error as? URLError)?.code == .timedOut || status == 504 ? "서버 응답 시간이 초과됐습니다. 아직 완료하지 못한 주장이 있습니다." : "검증 응답이 완료되지 않았습니다. HTTP \(status). 이미 받은 알림은 해당 주장에 대한 결과입니다."
+            notice(key: "server-error", title: "검증 요청을 완료하지 못했습니다", message: String(item.preview.prefix(60)) + "\n" + reason, interval: 20)
+        }
+        if let next = work.finish(item, success: success, now: now), active { start(next) }
     }
     private func handle(_ value: [String:Any]?, item: VerificationWorkQueue.Work) -> Bool {
         guard let value = value else { return false }
@@ -238,11 +265,13 @@ final class SampleHandler: RPBroadcastSampleHandler {
         let claims = value["claims"] as? [[String:Any]] ?? []
         let claim = (claims.first(where: { $0["verdict"] as? String == verdict })?["claim"] as? String) ?? claims.first?["claim"] as? String ?? item.preview
         let title = verdict == "REFUTES" ? "원문 근거와 충돌합니다" : verdict == "SUPPORTS" ? "원문 근거가 뒷받침합니다" : "판별 불가 · 근거 부족"
-        notify(title, "“" + String(claim.prefix(80)) + "”\n" + String((value["message"] as? String ?? "원문 근거를 확인하세요.").prefix(200)))
+        notice(key: "verdict-" + verdict + "-" + claim, title: title, message: "“" + String(claim.prefix(80)) + "”\n" + String((value["message"] as? String ?? "원문 근거를 확인하세요.").prefix(200)), interval: 90)
         return true
     }
     private func notice(key: String, title: String, message: String, interval: TimeInterval) {
-        guard now - (noticeTimes[key] ?? -.infinity) >= interval else { return };noticeTimes[key] = now;notify(title, message)
+        guard now - (noticeTimes[key] ?? -.infinity) >= interval else { return };noticeTimes[key] = now
+        if noticeTimes.count > 256, let oldest = noticeTimes.min(by: { $0.value < $1.value })?.key { noticeTimes[oldest] = nil }
+        notify(title, message)
     }
     func notify(_ title: String, _ message: String) {
         let content = UNMutableNotificationContent();content.title = title;content.body = message

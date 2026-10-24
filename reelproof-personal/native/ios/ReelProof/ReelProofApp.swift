@@ -36,7 +36,7 @@ final class BroadcastSessionStatus: ObservableObject {
     func reset() { observer.stop(); session = nil; phase = .idle; progress = [:]; progressAt = nil }
     var diagnosticSummary: String {
         let rows = progress.keys.sorted().map { "\($0): \(progress[$0] ?? "")" }
-        return (["ReelProof 0.4.8 (11)", "방송 상태: \(phase)"] + rows + ["마지막 상태 수신: \(progressAt.map { ISO8601DateFormatter().string(from: $0) } ?? "없음")"]).joined(separator: "\n")
+        return (["ReelProof 0.4.9 (12)", "방송 상태: \(phase)"] + rows + ["마지막 상태 수신: \(progressAt.map { ISO8601DateFormatter().string(from: $0) } ?? "없음")"]).joined(separator: "\n")
     }
     func refresh(recording: Bool) {
         guard let session = session else { return }
@@ -76,10 +76,15 @@ struct ContentView: View {
                     .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                     .textFieldStyle(.roundedBorder).focused($focusedField, equals: .endpoint)
                     .accessibilityIdentifier("serverEndpoint")
-                SecureField("검증 서버 접근 키", text: $token)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .textFieldStyle(.roundedBorder).focused($focusedField, equals: .token)
-                Text("처음에만 서버 접근 키를 설정합니다. Gemini API 키는 서버에 등록합니다.").font(.footnote).foregroundStyle(.secondary)
+                Text(token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "최초 연결 설정이 필요합니다." : "저장된 연결을 자동으로 사용합니다. 키를 다시 입력할 필요가 없습니다.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                DisclosureGroup("연결 설정") {
+                    SecureField("검증 서버 접근 키", text: $token)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .textFieldStyle(.roundedBorder).focused($focusedField, equals: .token)
+                    Text("기존 앱을 삭제하지 않고 같은 계정·Bundle ID로 업데이트하면 저장된 연결을 재사용합니다. 최초 설치나 앱 삭제로 연결이 없어진 경우에만 다시 설정합니다. Gemini API 키는 서버에만 등록합니다.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }.font(.footnote)
                 if broadcast.phase != .detecting {
                     Button(action: prepareDetection) {
                         Text(showPicker ? "방송 시작 창 다시 열기" : "탐지 준비").font(.headline)
@@ -137,7 +142,7 @@ struct ContentView: View {
                     Text(AppConfiguration.sharingDiagnostics).font(.caption).textSelection(.enabled)
                     Button("권한 진단 복사") { UIPasteboard.general.string = AppConfiguration.sharingDiagnostics }
                 }.font(.footnote)
-                Text("개인 테스트 0.4.8 (11)").font(.caption2).foregroundStyle(.secondary)
+                Text("개인 테스트 0.4.9 (12)").font(.caption2).foregroundStyle(.secondary)
             }.padding(28) }
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: showPicker) { ready in
@@ -180,7 +185,7 @@ struct ContentView: View {
             failSetup("검증 서버 주소를 확인하세요. HTTPS 주소가 필요합니다."); return
         }
         let appKey = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !appKey.isEmpty else { failSetup("검증 결과를 받으려면 검증 서버 접근 키를 먼저 입력하세요."); return }
+        guard !appKey.isEmpty else { failSetup("저장된 연결이 없습니다. ‘연결 설정’에서 최초 접근 키를 설정하세요."); return }
         guard AppConfiguration.broadcastExtension != nil else { failSetup("방송 확장이 없습니다. 확장을 유지해 앱과 함께 설치하세요."); return }
         preparing = true; message = "탐지 시작에 필요한 연결과 알림을 준비합니다."
         Task { @MainActor in

@@ -29,6 +29,19 @@ import Foundation
         _ = queue.finish(c, success: true, now: 20);_ = queue.finish(audio, success: true, now: 21)
         expect(queue.offer(a, now: 100) == .start, "A later revisit may be checked again")
         queue.reset();expect(queue.active.isEmpty && queue.pending.isEmpty, "Stop/pause releases pending private content")
+        var stream = VerificationStream()
+        let valid = "{\"event\":\"result\",\"result\":{\"status\":\"analyzed\",\"verdict\":\"SUPPORTS\",\"claims\":[{\"claim\":\"명시된 주장\"}]}}"
+        if case .result? = try stream.consume(valid) {} else { fatalError("Deliver first complete claim before done") }
+        expect(stream.resultCount == 1 && !stream.finished, "One result must not await a slow second claim")
+        _ = try stream.consume("{\"event\":\"done\"}")
+        expect(stream.finished, "Require explicit completion")
+        do { _ = try stream.consume(valid); fatalError("Reject data after done") } catch {}
+        var missing = VerificationStream()
+        do { _ = try missing.consume("{\"event\":\"done\"}"); fatalError("No success without a result") } catch {}
+        var failed = VerificationStream()
+        _ = try failed.consume(valid)
+        do { _ = try failed.consume("{\"event\":\"error\",\"status\":503}"); fatalError("A partial request failure is not full success") }
+        catch let error as VerificationStream.Failure { expect(error.status == 503 && !failed.finished, "Keep earlier explicit claim result; do not fabricate the rest") }
         print("PASS real selector regression: claim score \(model.score(claim)), whole-screen score \(model.score(screen)); per-sentence selection, independent audio/OCR lanes, latest pending work, bounded concurrency, deduplication, retry and stale callback protection.")
     }
 }
