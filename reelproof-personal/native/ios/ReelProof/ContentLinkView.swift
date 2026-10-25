@@ -10,6 +10,7 @@ import UserNotifications
     }
     @Published var busy = false
     @Published var status = "링크의 내용을 읽고 사실 주장을 최대 3개 찾아 검증합니다."
+    @Published var notificationNotice = ""
     @Published var sourceTitle = ""
     @Published var scope = ""
     @Published var excerpt = ""
@@ -36,6 +37,8 @@ import UserNotifications
         task = Task {
             defer { if self.generation == run { self.busy = false; self.task = nil } }
             do {
+                let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
+                self.notificationNotice = granted ? "" : "알림 권한이 없어 결과는 이 화면에 표시합니다."
                 var request = URLRequest(url: api); request.httpMethod = "POST"; request.timeoutInterval = 210
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 request.setValue("Bearer " + token.trimmingCharacters(in: .whitespacesAndNewlines), forHTTPHeaderField: "Authorization")
@@ -67,7 +70,8 @@ import UserNotifications
                                 let content = UNMutableNotificationContent()
                                 content.title = Self.verdictLabel(result.verdict)
                                 content.body = String(result.claim.prefix(90)) + "\n" + String(result.reason.prefix(140))
-                                UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: result.id.uuidString, content: content, trigger: nil))
+                                do { try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: result.id.uuidString, content: content, trigger: nil)) }
+                                catch { self.notificationNotice = "알림을 요청하지 못했습니다. 이 화면에서 결과를 확인하세요." }
                             }
                         }
                     case .done:
@@ -105,7 +109,10 @@ struct ContentLinkView: View {
                     Button(model.busy ? "내용 추출·검증 중…" : "내용에서 주장 찾고 검증") { model.start(url: link, offset: offset, endpoint: endpoint, token: token) }.disabled(model.busy).accessibilityIdentifier("verifyContentLink")
                     if model.busy { Button("요청 중단") { model.cancel(); model.status = "요청을 중단했습니다." } }
                 }
-                Section("진행 상태") { Text(model.status).font(.footnote).accessibilityIdentifier("contentLinkStatus") }
+                Section("진행 상태") {
+                    Text(model.status).font(.footnote).accessibilityIdentifier("contentLinkStatus")
+                    if !model.notificationNotice.isEmpty { Text(model.notificationNotice).font(.caption) }
+                }
                 if !model.sourceTitle.isEmpty {
                     Section("추출한 내용") {
                         Text(model.sourceTitle).font(.headline)

@@ -23,7 +23,7 @@ struct TextModel {
         let ns = text as NSString
         let separated = expression.stringByReplacingMatches(in: text, range: NSRange(location: 0, length: ns.length), withTemplate: "\n")
         let lines = separated.components(separatedBy: "\n").prefix(60).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-        var candidates = Array(lines)
+        var candidates: [String] = []
         let controls: Set<String> = ["좋아요", "공유", "팔로우", "댓글", "원본 오디오", "구독", "Subscribe", "Share"]
         // Article lines and video captions can wrap one sentence across rows.
         for i in lines.indices where !lines[i].isEmpty && !controls.contains(lines[i]) {
@@ -35,6 +35,7 @@ struct TextModel {
                 if combined.range(of: "[.!?。！？]$", options: .regularExpression) != nil { candidates.append(combined); break }
             }
         }
+        candidates.append(contentsOf: lines)
         var seen = Set<String>()
         return candidates.compactMap { claim -> String? in
             guard claim.count >= 5, seen.insert(claim).inserted, score(claim) >= threshold else { return nil }

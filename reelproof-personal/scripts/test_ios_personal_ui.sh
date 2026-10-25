@@ -19,5 +19,5 @@ xcodebuild -project ReelProof.xcodeproj -scheme ReelProof -configuration Debug \
 "$personal_python" - <<'PY'
 import json
 from pathlib import Path
-Path('personal-distribution/ui-test-status.json').write_text(json.dumps({'simulator_ui_tests_passed':True,'simulator_picker_action_tests_passed':True,'checks':['left and right prepare button hit areas','keyboard dismissal','invalid server alert','missing key cannot open broadcast or show detecting','picker action waits for window and opens once per prepare request','unsupported picker hierarchy preserves manual fallback'],'physical_system_consent_ui_tested':False,'physical_device_tested':False},indent=2)+'\n')
+Path('personal-distribution/ui-test-status.json').write_text(json.dumps({'simulator_ui_tests_passed':True,'simulator_picker_action_tests_passed':True,'content_link_ui_tests_passed':True,'checks':['link entry and invalid URL feedback without a network request','left and right prepare button hit areas','keyboard dismissal','invalid server alert','missing key cannot open broadcast or show detecting','picker action waits for window and opens once per prepare request','unsupported picker hierarchy preserves manual fallback'],'physical_system_consent_ui_tested':False,'physical_device_tested':False},indent=2)+'\n')
 PY

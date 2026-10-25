@@ -43,4 +43,15 @@ final class PreparationUITests: XCTestCase {
         XCTAssertFalse(app.otherElements["broadcastControls"].exists)
         XCTAssertFalse(app.staticTexts["detectionActive"].exists)
     }
+    func testContentLinkEntryRejectsInvalidURLWithoutNetwork() {
+        let entry = app.buttons["openContentLink"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 10))
+        entry.tap()
+        let field = app.textFields["contentURL"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap(); field.typeText("http://invalid.example")
+        app.buttons["verifyContentLink"].tap()
+        XCTAssertTrue(app.staticTexts["contentLinkStatus"].label.contains("HTTPS"))
+    }
+
 }
