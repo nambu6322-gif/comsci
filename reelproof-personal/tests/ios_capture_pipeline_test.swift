@@ -33,6 +33,10 @@ import Foundation
         var sourceStream = VerificationStream()
         if case .content? = try sourceStream.consume("{\"event\":\"content\",\"content\":{\"title\":\"뉴스 기사\"}}") {} else { fatalError("Read content metadata before results") }
         expect(!sourceStream.finished && sourceStream.resultCount == 0, "Extracted source is not a verdict")
+        var errorsOnly = VerificationStream()
+        if case .claimError? = try errorsOnly.consume("{\"event\":\"claim_error\",\"claim\":\"선별된 주장\",\"message\":\"검색 한도\"}") {} else { fatalError("Keep explicit per-claim failure") }
+        _ = try errorsOnly.consume("{\"event\":\"done\"}")
+        expect(errorsOnly.finished && errorsOnly.resultCount == 0 && errorsOnly.failureCount == 1, "A completed request with provider failures is not a factual verdict")
         var stream = VerificationStream()
         let valid = "{\"event\":\"result\",\"result\":{\"status\":\"analyzed\",\"verdict\":\"SUPPORTS\",\"claims\":[{\"claim\":\"명시된 주장\"}]}}"
         if case .result? = try stream.consume(valid) {} else { fatalError("Deliver first complete claim before done") }

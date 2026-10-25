@@ -229,7 +229,7 @@ final class SampleHandler: RPBroadcastSampleHandler {
                             }
                         }
                         guard accepted else { throw VerificationStream.Failure(status: 502, message: "검증 결과 형식 오류") }
-                    case .content: break
+                    case .content, .claimError: break
                     case .done: break
                     }
                     if stream.finished { break }

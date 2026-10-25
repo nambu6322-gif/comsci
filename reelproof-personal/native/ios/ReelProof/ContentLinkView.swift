@@ -15,6 +15,7 @@ import UserNotifications
     @Published var scope = ""
     @Published var excerpt = ""
     @Published var claims: [String] = []
+    @Published var failures: [String] = []
     @Published var results: [ClaimResult] = []
     private var task: Task<Void, Never>?
     private var generation = UUID()
@@ -32,7 +33,7 @@ import UserNotifications
             payload["start_seconds"] = seconds
         }
         let run = UUID(); generation = run
-        busy = true; sourceTitle = ""; scope = ""; excerpt = ""; claims = []; results = []
+        busy = true; sourceTitle = ""; scope = ""; excerpt = ""; claims = []; results = []; failures = []
         status = "영상·기사 내용을 추출하고 있습니다. 이 화면을 열어 두세요."
         task = Task {
             defer { if self.generation == run { self.busy = false; self.task = nil } }
@@ -74,8 +75,10 @@ import UserNotifications
                                 catch { self.notificationNotice = "알림을 요청하지 못했습니다. 이 화면에서 결과를 확인하세요." }
                             }
                         }
+                    case .claimError(let value):
+                        self.failures.append((value["claim"] as? String ?? "주장") + "\n" + (value["message"] as? String ?? "검증 미완료"))
                     case .done:
-                        if !self.results.isEmpty { self.status = "\(self.results.count)개 주장 확인 완료 · 영상·기사 전체의 진위 판정은 아닙니다." }
+                        if !self.results.isEmpty || !self.failures.isEmpty { self.status = "확인 결과 \(self.results.count)개 · 미완료 \(self.failures.count)개 · 영상·기사 전체의 진위 판정은 아닙니다." }
                     }
                     if stream.finished { break }
                 }
@@ -119,6 +122,11 @@ struct ContentLinkView: View {
                         Text(model.scope).font(.caption)
                         Text(model.excerpt).font(.footnote).textSelection(.enabled)
                         ForEach(Array(model.claims.enumerated()), id: \.offset) { item in Text("\(item.offset + 1). \(item.element)").font(.footnote) }
+                    }
+                }
+                if !model.failures.isEmpty {
+                    Section("검증 미완료 · 진위 판정 아님") {
+                        ForEach(Array(model.failures.enumerated()), id: \.offset) { item in Text(item.element).font(.footnote) }
                     }
                 }
                 ForEach(model.results) { result in
