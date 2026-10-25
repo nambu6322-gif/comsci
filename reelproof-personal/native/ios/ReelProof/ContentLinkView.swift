@@ -6,10 +6,12 @@ import UserNotifications
     struct ClaimResult: Identifiable {
         let id = UUID()
         let claim: String, verdict: String, reason: String
+        let knowledgeAssessment: String?
         let evidence: [[String: String]]
     }
     @Published var busy = false
     @Published var status = "링크의 내용을 읽고 사실 주장을 최대 3개 찾아 검증합니다."
+    @Published var modeNotice = ""
     @Published var notificationNotice = ""
     @Published var sourceTitle = ""
     @Published var scope = ""
@@ -56,6 +58,7 @@ import UserNotifications
                     guard let event = try stream.consume(line) else { continue }
                     switch event {
                     case .content(let value):
+                        self.modeNotice = value["verification_mode"] as? String == "knowledge_only" ? "Gemini 자체지식 추정 · 외부 검색·원문 근거 대조 없음" : "원문 근거 대조 모드"
                         self.sourceTitle = value["title"] as? String ?? "검증 대상"
                         self.scope = value["scope"] as? String ?? ""
                         self.excerpt = value["excerpt"] as? String ?? ""
@@ -66,10 +69,10 @@ import UserNotifications
                             self.status = value["message"] as? String ?? "검증할 주장이 없습니다."
                         } else {
                             for item in value["claims"] as? [[String: Any]] ?? [] {
-                                let result = ClaimResult(claim: item["claim"] as? String ?? "", verdict: item["verdict"] as? String ?? "NOT_ENOUGH_INFO", reason: item["reason"] as? String ?? "근거 부족", evidence: item["evidence"] as? [[String: String]] ?? [])
+                                let result = ClaimResult(claim: item["claim"] as? String ?? "", verdict: item["verdict"] as? String ?? "NOT_ENOUGH_INFO", reason: item["reason"] as? String ?? "근거 부족", knowledgeAssessment: (item["knowledge_assessment"] as? [String: Any])?["assessment"] as? String, evidence: item["evidence"] as? [[String: String]] ?? [])
                                 self.results.append(result)
                                 let content = UNMutableNotificationContent()
-                                content.title = Self.verdictLabel(result.verdict)
+                                content.title = Self.verdictLabel(result.verdict, knowledge: result.knowledgeAssessment)
                                 content.body = String(result.claim.prefix(90)) + "\n" + String(result.reason.prefix(140))
                                 do { try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: result.id.uuidString, content: content, trigger: nil)) }
                                 catch { self.notificationNotice = "알림을 요청하지 못했습니다. 이 화면에서 결과를 확인하세요." }
@@ -90,8 +93,9 @@ import UserNotifications
             }
         }
     }
-    static func verdictLabel(_ value: String) -> String {
-        value == "SUPPORTS" ? "원문 근거가 뒷받침함" : value == "REFUTES" ? "원문 근거와 충돌함" : "근거 부족 · 판별 불가"
+    static func verdictLabel(_ value: String, knowledge: String? = nil) -> String {
+        if let knowledge = knowledge { return VerificationStream.assessmentLabel(knowledge) }
+        return value == "SUPPORTS" ? "원문 근거가 뒷받침함" : value == "REFUTES" ? "원문 근거와 충돌함" : "근거 부족 · 판별 불가"
     }
 }
 
@@ -113,6 +117,7 @@ struct ContentLinkView: View {
                     if model.busy { Button("요청 중단") { model.cancel(); model.status = "요청을 중단했습니다." } }
                 }
                 Section("진행 상태") {
+                    if !model.modeNotice.isEmpty { Text(model.modeNotice).font(.headline) }
                     Text(model.status).font(.footnote).accessibilityIdentifier("contentLinkStatus")
                     if !model.notificationNotice.isEmpty { Text(model.notificationNotice).font(.caption) }
                 }
@@ -130,7 +135,7 @@ struct ContentLinkView: View {
                     }
                 }
                 ForEach(model.results) { result in
-                    Section(ContentLinkModel.verdictLabel(result.verdict)) {
+                    Section(ContentLinkModel.verdictLabel(result.verdict, knowledge: result.knowledgeAssessment)) {
                         Text(result.claim).font(.headline)
                         Text(result.reason).font(.footnote)
                         ForEach(Array(result.evidence.enumerated()), id: \.offset) { item in
@@ -139,7 +144,7 @@ struct ContentLinkView: View {
                         }
                     }
                 }
-                Section { Text("결과는 선별한 개별 주장에 대한 검증입니다. 입력한 기사 자체를 근거로 다시 확인하지 않습니다. 검색·모델 사용 한도나 원문 부족으로 판별하지 못할 수 있습니다.").font(.caption) }
+                Section { Text("결과는 선별한 개별 주장에 대한 판단입니다. Gemini 자체지식 모드는 외부 근거를 대조하지 않은 AI 추정입니다. 최근 사건이나 알려지지 않은 사실은 불확실할 수 있습니다.").font(.caption) }
             }
             .navigationTitle("영상·기사 링크 검증")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("닫기") { model.cancel(); dismiss() } } }

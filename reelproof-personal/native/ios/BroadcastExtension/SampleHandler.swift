@@ -265,7 +265,8 @@ final class SampleHandler: RPBroadcastSampleHandler {
         record(item.lane == .screen ? .screenDone : .audioDone)
         let claims = value["claims"] as? [[String:Any]] ?? []
         let claim = (claims.first(where: { $0["verdict"] as? String == verdict })?["claim"] as? String) ?? claims.first?["claim"] as? String ?? item.preview
-        let title = verdict == "REFUTES" ? "원문 근거와 충돌합니다" : verdict == "SUPPORTS" ? "원문 근거가 뒷받침합니다" : "판별 불가 · 근거 부족"
+        let knowledge = (value["knowledge_assessment"] as? [String: Any])?["assessment"] as? String
+        let title = knowledge.map { VerificationStream.assessmentLabel($0) } ?? (verdict == "REFUTES" ? "원문 근거와 충돌합니다" : verdict == "SUPPORTS" ? "원문 근거가 뒷받침합니다" : "판별 불가 · 근거 부족")
         notice(key: "verdict-" + verdict + "-" + claim, title: title, message: "“" + String(claim.prefix(80)) + "”\n" + String((value["message"] as? String ?? "원문 근거를 확인하세요.").prefix(200)), interval: 90)
         return true
     }

@@ -36,7 +36,7 @@ final class BroadcastSessionStatus: ObservableObject {
     func reset() { observer.stop(); session = nil; phase = .idle; progress = [:]; progressAt = nil }
     var diagnosticSummary: String {
         let rows = progress.keys.sorted().map { "\($0): \(progress[$0] ?? "")" }
-        return (["ReelProof 0.5.0 (13)", "방송 상태: \(phase)"] + rows + ["마지막 상태 수신: \(progressAt.map { ISO8601DateFormatter().string(from: $0) } ?? "없음")"]).joined(separator: "\n")
+        return (["ReelProof 0.5.1 (14)", "방송 상태: \(phase)"] + rows + ["마지막 상태 수신: \(progressAt.map { ISO8601DateFormatter().string(from: $0) } ?? "없음")"]).joined(separator: "\n")
     }
     func refresh(recording: Bool) {
         guard let session = session else { return }
@@ -71,8 +71,8 @@ struct ContentView: View {
         ScrollViewReader { proxy in
             ScrollView { VStack(alignment: .leading, spacing: 24) {
                 Text("▶  ReelProof").font(.title2.bold()).foregroundStyle(green)
-                Text("영상도, 기사도,\n근거로 확인하세요.").font(.system(size: 34, weight: .semibold)).foregroundStyle(green)
-                Text("음성·자막의 주장을 원문과 대조하고, 근거가 뒷받침하는지·충돌하는지·부족한지 알립니다.").font(.subheadline).foregroundStyle(.secondary)
+                Text("영상도, 기사도,\nAI로 살펴보세요.").font(.system(size: 34, weight: .semibold)).foregroundStyle(green)
+                Text("음성·자막에서 주장을 찾고 AI 판단을 표시합니다. 자체지식 모드는 외부 근거를 대조하지 않은 추정입니다.").font(.subheadline).foregroundStyle(.secondary)
                 TextField("검증 서버 HTTPS 주소", text: $endpoint)
                     .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                     .textFieldStyle(.roundedBorder).focused($focusedField, equals: .endpoint)
@@ -145,7 +145,7 @@ struct ContentView: View {
                     Text(AppConfiguration.sharingDiagnostics).font(.caption).textSelection(.enabled)
                     Button("권한 진단 복사") { UIPasteboard.general.string = AppConfiguration.sharingDiagnostics }
                 }.font(.footnote)
-                Text("개인 테스트 0.5.0 (13)").font(.caption2).foregroundStyle(.secondary)
+                Text("개인 테스트 0.5.1 (14)").font(.caption2).foregroundStyle(.secondary)
             }.padding(28) }
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: showPicker) { ready in

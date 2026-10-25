@@ -3,6 +3,13 @@ import Foundation
 /// Only complete, source-checked claim verdicts are emitted by the server.
 /// Partial JSON/model output is never interpreted as a truth judgment.
 struct VerificationStream {
+    static func assessmentLabel(_ value: String) -> String {
+        switch value {
+        case "LIKELY_TRUE": return "AI 추정 · 사실일 가능성이 높음"
+        case "LIKELY_FALSE": return "AI 추정 · 오류일 가능성이 높음"
+        default: return "AI 추정 · 판단 불확실"
+        }
+    }
     enum Event { case content([String: Any]), claimError([String: Any]), result([String: Any]), done }
     struct Failure: Error { let status: Int; let message: String }
     private var contentReceived = false
