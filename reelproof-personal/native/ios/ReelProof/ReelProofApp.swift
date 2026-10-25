@@ -36,7 +36,7 @@ final class BroadcastSessionStatus: ObservableObject {
     func reset() { observer.stop(); session = nil; phase = .idle; progress = [:]; progressAt = nil }
     var diagnosticSummary: String {
         let rows = progress.keys.sorted().map { "\($0): \(progress[$0] ?? "")" }
-        return (["ReelProof 0.4.9 (12)", "방송 상태: \(phase)"] + rows + ["마지막 상태 수신: \(progressAt.map { ISO8601DateFormatter().string(from: $0) } ?? "없음")"]).joined(separator: "\n")
+        return (["ReelProof 0.5.0 (13)", "방송 상태: \(phase)"] + rows + ["마지막 상태 수신: \(progressAt.map { ISO8601DateFormatter().string(from: $0) } ?? "없음")"]).joined(separator: "\n")
     }
     func refresh(recording: Bool) {
         guard let session = session else { return }
@@ -55,6 +55,7 @@ struct ContentView: View {
     @AppStorage("serverToken", store: sharedStore) var token = ""
     @StateObject private var broadcast = BroadcastSessionStatus()
     @State private var message = "탐지 준비를 누르고 iOS에서 방송 시작을 확인하세요. 탐지 중으로 바뀌면 릴스를 시청하면 됩니다."
+    @State private var showLinks = false
     @State private var showPicker = false
     @State private var pickerRequest = 0
     @State private var preparing = false
@@ -70,7 +71,7 @@ struct ContentView: View {
         ScrollViewReader { proxy in
             ScrollView { VStack(alignment: .leading, spacing: 24) {
                 Text("▶  ReelProof").font(.title2.bold()).foregroundStyle(green)
-                Text("준비하고,\n릴스를 시청하세요.").font(.system(size: 34, weight: .semibold)).foregroundStyle(green)
+                Text("영상도, 기사도,\n근거로 확인하세요.").font(.system(size: 34, weight: .semibold)).foregroundStyle(green)
                 Text("음성·자막의 주장을 원문과 대조하고, 근거가 뒷받침하는지·충돌하는지·부족한지 알립니다.").font(.subheadline).foregroundStyle(.secondary)
                 TextField("검증 서버 HTTPS 주소", text: $endpoint)
                     .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
@@ -85,6 +86,8 @@ struct ContentView: View {
                     Text("기존 앱을 삭제하지 않고 같은 계정·Bundle ID로 업데이트하면 저장된 연결을 재사용합니다. 최초 설치나 앱 삭제로 연결이 없어진 경우에만 다시 설정합니다. Gemini API 키는 서버에만 등록합니다.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.font(.footnote)
+                Button("유튜브·기사 링크로 확인") { focusedField = nil; showLinks = true }
+                    .accessibilityIdentifier("openContentLink")
                 if broadcast.phase != .detecting {
                     Button(action: prepareDetection) {
                         Text(showPicker ? "방송 시작 창 다시 열기" : "탐지 준비").font(.headline)
@@ -96,7 +99,7 @@ struct ContentView: View {
                 }
                 VStack(alignment: .leading, spacing: 12) {
                     if broadcast.phase == .detecting {
-                        Label("탐지 중 · 릴스를 시청하세요", systemImage: "waveform.circle.fill")
+                        Label("탐지 중 · 영상·기사 화면을 보세요", systemImage: "waveform.circle.fill")
                             .font(.headline).foregroundStyle(green).accessibilityIdentifier("detectionActive")
                     }
                     Text(message).font(.footnote).foregroundStyle(.secondary).accessibilityIdentifier("preparationStatus")
@@ -142,7 +145,7 @@ struct ContentView: View {
                     Text(AppConfiguration.sharingDiagnostics).font(.caption).textSelection(.enabled)
                     Button("권한 진단 복사") { UIPasteboard.general.string = AppConfiguration.sharingDiagnostics }
                 }.font(.footnote)
-                Text("개인 테스트 0.4.9 (12)").font(.caption2).foregroundStyle(.secondary)
+                Text("개인 테스트 0.5.0 (13)").font(.caption2).foregroundStyle(.secondary)
             }.padding(28) }
             .scrollDismissesKeyboard(.interactively)
             .onChange(of: showPicker) { ready in
@@ -151,7 +154,7 @@ struct ContentView: View {
             .onChange(of: broadcast.phase) { phase in
                 if phase == .detecting {
                     pairing = nil; showPicker = false
-                    message = "릴스·쇼츠 앱으로 이동하세요. 음성·자막에서 검증할 주장을 골라 분석하고 결과를 알립니다."
+                    message = "유튜브·릴스나 뉴스 기사 화면으로 이동하세요. 음성·자막에서 검증할 주장을 골라 분석하고 결과를 알립니다."
                     withAnimation { proxy.scrollTo("preparationStatus", anchor: .center) }
                 } else if phase == .stopped {
                     pairing = nil; showPicker = false
@@ -160,6 +163,7 @@ struct ContentView: View {
             }
         }
         .background(Color(red: 0.96, green: 0.97, blue: 0.95))
+        .sheet(isPresented: $showLinks) { ContentLinkView(endpoint: endpoint, token: token) }
         .alert("탐지 준비 확인", isPresented: $showSetupError) {
             if needsNotificationSettings {
                 Button("알림 설정 열기") { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } }

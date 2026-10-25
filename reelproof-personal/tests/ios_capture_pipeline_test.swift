@@ -29,6 +29,10 @@ import Foundation
         _ = queue.finish(c, success: true, now: 20);_ = queue.finish(audio, success: true, now: 21)
         expect(queue.offer(a, now: 100) == .start, "A later revisit may be checked again")
         queue.reset();expect(queue.active.isEmpty && queue.pending.isEmpty, "Stop/pause releases pending private content")
+        expect(model.selectedClaims(in: "금성은 태양계에서 가장\n뜨거운 행성이다.").contains(claim), "Join wrapped article/video caption rows before selecting claims")
+        var sourceStream = VerificationStream()
+        if case .content? = try sourceStream.consume("{\"event\":\"content\",\"content\":{\"title\":\"뉴스 기사\"}}") {} else { fatalError("Read content metadata before results") }
+        expect(!sourceStream.finished && sourceStream.resultCount == 0, "Extracted source is not a verdict")
         var stream = VerificationStream()
         let valid = "{\"event\":\"result\",\"result\":{\"status\":\"analyzed\",\"verdict\":\"SUPPORTS\",\"claims\":[{\"claim\":\"명시된 주장\"}]}}"
         if case .result? = try stream.consume(valid) {} else { fatalError("Deliver first complete claim before done") }

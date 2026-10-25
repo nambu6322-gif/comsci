@@ -22,9 +22,21 @@ struct TextModel {
         let expression = try! NSRegularExpression(pattern: "\\n+|(?<=[.!?。！？])\\s+")
         let ns = text as NSString
         let separated = expression.stringByReplacingMatches(in: text, range: NSRange(location: 0, length: ns.length), withTemplate: "\n")
+        let lines = separated.components(separatedBy: "\n").prefix(60).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        var candidates = Array(lines)
+        let controls: Set<String> = ["좋아요", "공유", "팔로우", "댓글", "원본 오디오", "구독", "Subscribe", "Share"]
+        // Article lines and video captions can wrap one sentence across rows.
+        for i in lines.indices where !lines[i].isEmpty && !controls.contains(lines[i]) {
+            var combined = lines[i]
+            guard combined.range(of: "[.!?。！？]$", options: .regularExpression) == nil else { continue }
+            for j in (i + 1)..<min(i + 3, lines.endIndex) {
+                guard !lines[j].isEmpty, !controls.contains(lines[j]), combined.count + lines[j].count < 600 else { break }
+                combined += " " + lines[j]
+                if combined.range(of: "[.!?。！？]$", options: .regularExpression) != nil { candidates.append(combined); break }
+            }
+        }
         var seen = Set<String>()
-        return separated.components(separatedBy: "\n").prefix(60).compactMap { value -> String? in
-            let claim = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return candidates.compactMap { claim -> String? in
             guard claim.count >= 5, seen.insert(claim).inserted, score(claim) >= threshold else { return nil }
             return claim
         }.prefix(3).map { $0 }
