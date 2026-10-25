@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#184b3b"><title>ReelProof · iPhone 개인 테스트 설치</title>
+<link rel="icon" href="/icon.svg"><link rel="stylesheet" href="/mobile.css">
+<style>.install-page{padding-bottom:40px}.install-page h1{font-size:27px}.install-page p,.install-page li{font-size:14px;line-height:1.95}.install-page ol{padding-left:23px}.install-page li{margin-bottom:18px}.install-page .notice{padding:16px;border:1px solid #dbe5d2;border-radius:12px;background:#edf3e4}.install-page .links{display:flex;flex-wrap:wrap;gap:16px;font-size:12px;margin:24px 0}.install-page .links a{text-decoration:underline}.install-page .checksum{overflow-wrap:anywhere;font-size:10px}.install-page code{overflow-wrap:anywhere}</style>
+</head>
+<body><main class="phone install-page">
+<header><a class="brand" href="/"><span class="logo">▶</span>Reel<span>Proof</span></a></header>
+<span class="tag">IPHONE · IPAD · PERSONAL TEST</span>
+<h1>내 iPhone에,<br>개인 테스트 앱 설치.</h1>
+<p>0.5.0 · iOS·iPadOS 16 이상 · ARM64 · 유튜브·뉴스 기사 링크에서 주장 추출 · 화면·음성 탐지.</p>
+<p class="notice"><strong>Windows에서 본인 계정으로 서명해야 합니다.</strong><br>무료 Apple 계정은 보통 7일마다 서명을 갱신해야 합니다. 앱과 방송 확장을 함께 유지하세요. 공유 저장소 권한이 없어도 자동 화면 연결을 지원합니다. 실제 기기의 방송 시작 창·다른 앱 캡처·알림 확인은 필요합니다.</p>
+<a class="sheet-button" href="/downloads/reelproof-ios-personal.ipa?v=0.5.0" download>0.5.0 개인 테스트용 IPA 내려받기 ↓</a>
+<ol>
+<li><strong>Windows에서 서명·설치</strong><br><a href="https://sideloadly.io/" target="_blank" rel="noopener noreferrer"><u>Sideloadly 공식 사이트</u></a>에서 설치 조건을 확인합니다. 기존 앱을 갱신할 때는 같은 Apple 계정과 Bundle ID로 설치합니다. 방송 확장을 제거하지 마세요. 로그인·비밀번호·인증 코드는 설치 도구에서 직접 입력합니다.</li>
+<li><strong>저장된 연결 자동 사용</strong><br>기존 앱을 삭제하지 않고 같은 Apple 계정·Bundle ID로 덮어 설치하면 저장된 접근 키를 자동으로 재사용합니다. 키 입력칸은 ‘연결 설정’ 안에 있습니다. 최초 설치나 저장된 연결이 없는 경우에만 설정합니다. 서버는 <code>https://reelproof-evidence.vercel.app</code>입니다. 최초 연결 때 ‘연결 설정’에 원본 검증 서버 접근 키를 입력합니다. <code>REELPROOF_APP_TOKEN_SHA256</code>는 서버의 확인용 해시이며 앱 입력값이 아닙니다. Gemini API 키는 서버에 등록합니다. iPhone이 요구하면 개발자 앱 신뢰와 개발자 모드도 확인합니다.</li>
+<li><strong>탐지 준비 → iOS 방송 시작</strong><br>탐지 준비를 누르면 알림 권한과 연결을 준비한 뒤 iOS 방송 창을 열도록 구현했습니다. <b>iOS의 ‘방송 시작’ 확인은 직접 눌러야 합니다.</b> 창이 자동으로 열리지 않으면 화면의 시스템 녹화 버튼을 누릅니다.</li>
+<li><strong>‘탐지 중’ 표시 → 릴스 시청</strong><br>연결이 끝나면 자동 연결 화면이 사라지고 <b>‘탐지 중 · 영상·기사 화면을 보세요’</b>가 표시됩니다. 그 뒤 유튜브·릴스나 뉴스 기사 화면으로 이동하세요. 화면·음성에서 검증할 주장을 선별하고 원문 대조 결과를 알립니다. 준비 버튼을 누른 것만으로 탐지 중이라고 표시하지 않습니다.</li>
+<li><strong>결과 알림 확인·종료</strong><br>주장에 대해 근거가 뒷받침함·원문과 충돌함·판별 불가를 구분합니다. 제어 센터에서 화면 녹화를 중지하면 탐지가 종료됩니다. 자동 연결용 검증 키는 최대 30분 동안 유효하므로 만료되면 다시 준비합니다.</li>
+</ol>
+<p class="notice">공유 저장소가 없는 설치는 자동 연결 중 코드가 잠깐 보일 수 있습니다. 직접 카메라로 스캔하지 않습니다. 같은 iPhone의 방송 확장이 시작 화면에서 임시 연결 정보를 읽고 서버에서 인증합니다. ‘탐지 중’이 표시될 때까지 앱 화면을 유지하세요. 연결 화면에는 임시 검증 키가 포함되므로 공유하지 마세요.</p>
+<section><h2>영상·기사에서 주장 찾기 · 0.5.0</h2><p><strong>앱의 ‘유튜브·기사 링크로 확인’</strong>을 누르고 공개 HTTPS 링크를 붙여 넣으세요. 유튜브는 시작 위치부터 60초 구간의 음성·화면 내용을 읽고, 기사는 읽을 수 있는 본문에서 사실 주장을 최대 3개 선별합니다. 시작 위치를 비우면 링크의 시작 시각을 사용합니다. 추출 범위를 표시하며 전체 영상·기사의 진위를 확정하지 않습니다.</p><p>기사 본문은 최대 24,000자를 사용하며 일부만 읽으면 그 범위를 표시합니다. 로그인·유료·비공개·삭제·접근 차단 콘텐츠는 추출하지 못할 수 있습니다. 입력한 기사·영상 링크 자체를 확인 근거로 다시 사용하지 않도록 제외합니다.</p><p><strong>화면으로 보면서 확인하려면</strong> 기존처럼 ‘탐지 준비’ → iOS 방송 시작을 누르고 유튜브·릴스·기사 화면으로 이동하세요. 화면에 보이는 자막·본문과 허용된 앱 음성을 읽으며, 화면 밖 기사 전체나 재생하지 않은 영상 전체를 읽는 기능은 아닙니다. 줄바꿈된 문장의 선별을 보완했습니다.</p><p>완료된 주장부터 결과를 표시합니다. 한 주장의 검색이 실패해도 다른 주장은 계속 처리하고, 실패한 주장에는 ‘검증 미완료’를 표시합니다. Google 검색 사용 한도 오류가 있으면 최신 사건을 판별하지 못할 수 있습니다.</p><p>기존 앱을 삭제하지 말고 같은 Apple 계정·Bundle ID로 업데이트하면 저장된 연결을 재사용합니다. 서버·웹 입력과 시뮬레이터는 검사하며 실제 iPhone의 캡처·알림 수신은 별도 기기 확인이 필요합니다.</p></section>
+<p>검증 원문 색인은 WHO·NASA·FEVER 자료 122개입니다. 최신 사건용 Google 검색은 별도 공급자 한도의 영향을 받습니다. AI 대본 문체 알림은 실험 신호이며 영상의 AI 제작 여부나 사실·거짓을 확정하지 않습니다.</p>
+<div class="links"><a href="https://github.com/nambu6322-gif/comsci/actions/runs/40156191167" target="_blank" rel="noopener noreferrer">빌드 결과 ↗</a><a href="/downloads/reelproof-ios-personal-build-report.json" download>파일 검증 보고서 ↓</a><a href="/downloads/reelproof-ios-personal-source.zip" download>재현용 소스 ↓</a></div>
+<p class="checksum">IPA SHA-256<br>26b324d2619585d4db4573ad8b8e7497e5522c8ee7a5a5fd44a40fa7b8aaec17</p>
+</main></body></html>
