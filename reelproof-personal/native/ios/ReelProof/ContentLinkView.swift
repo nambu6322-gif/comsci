@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import UserNotifications
 
 @MainActor final class ContentLinkModel: ObservableObject {
@@ -9,7 +10,9 @@ import UserNotifications
     }
     @Published var busy = false
     @Published var status = "링크의 내용을 읽고 사실 주장을 최대 3개 찾아 검증합니다."
-    @Published var sourceTitle = "", scope = "", excerpt = ""
+    @Published var sourceTitle = ""
+    @Published var scope = ""
+    @Published var excerpt = ""
     @Published var claims: [String] = []
     @Published var results: [ClaimResult] = []
     private var task: Task<Void, Never>?
@@ -89,7 +92,8 @@ struct ContentLinkView: View {
     let endpoint: String, token: String
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model = ContentLinkModel()
-    @State private var link = "", offset = ""
+    @State private var link = ""
+    @State private var offset = ""
     var body: some View {
         NavigationStack {
             Form {
