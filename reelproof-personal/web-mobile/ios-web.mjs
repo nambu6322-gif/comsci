@@ -224,8 +224,12 @@ el('webForm').onsubmit = async event => {
     const data = await response.json();
     if (!response.ok) throw new Error(response.status === 401 ? '앱 전용 접근 키를 확인하세요.' : typeof data.detail === 'string' ? data.detail : '검증 서버 응답을 확인하지 못했습니다.');
     if (controller.signal.aborted || !dialog.open) return;
-    const title = data.status === 'skipped' ? '검증할 주장으로 선별되지 않았습니다.' : data.knowledge_assessment ? judgmentLabel(data) : { SUPPORTS: '원문 근거 있음', REFUTES: '원문 근거와 충돌', NOT_ENOUGH_INFO: '근거 부족 · 판별 불가' }[data.verdict] || '판별 불가';
+    const title = data.status === 'skipped' ? '검증할 주장으로 선별되지 않았습니다.' : data.verification_mode === 'knowledge_only' ? data.knowledge_assessment ? judgmentLabel(data) : 'Gemini 자체지식 추정' : { SUPPORTS: '원문 근거 있음', REFUTES: '원문 근거와 충돌', NOT_ENOUGH_INFO: '근거 부족 · 판별 불가' }[data.verdict] || '판별 불가';
     message(title, data.message || '확인할 근거가 부족합니다.');
+    if (data.verification_mode === 'knowledge_only' && (data.claims || []).length > 1) for (const claim of data.claims) {
+      const section = document.createElement('section'), h = document.createElement('h3'), p = document.createElement('p'), reason = document.createElement('p');
+      h.textContent = judgmentLabel(claim); p.textContent = claim.claim; reason.textContent = claim.reason; section.append(h, p, reason); el('webResult').append(section);
+    }
     for (const claim of data.claims || []) for (const evidence of claim.evidence || []) {
       const quote = document.createElement('blockquote'); quote.textContent = evidence.quote; el('webResult').append(quote);
       try { const u = new URL(evidence.source); if (u.protocol === 'https:') { const a = document.createElement('a'); a.href = u.href; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.textContent = '원문 보기 ↗'; el('webResult').append(a); } } catch {}

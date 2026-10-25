@@ -15,6 +15,10 @@ with sync_playwright() as p:
  page.locator('#webMode').select_option('text');page.locator('#webText').fill('지구는 태양계에서 세 번째 행성이다.');page.locator('#webKey').fill('fixture-knowledge-ui');page.locator('#webSubmit').click()
  page.wait_for_function('document.getElementById("webResult").innerText.includes("AI 추정 · 사실일 가능성이 높음")')
  assert page.locator('#webResult blockquote').count()==0 and '원문 근거 있음' not in page.locator('#webResult').inner_text()
+ result['claims'].append({**result['claims'][0],'claim':'지구는 평평한 원반이다.','knowledge_assessment':{'assessment':'LIKELY_FALSE','externally_verified':False}})
+ result.pop('knowledge_assessment')
+ page.locator('#webSubmit').click();page.wait_for_function('document.getElementById("webResult").innerText.includes("AI 추정 · 오류일 가능성이 높음")')
+ assert page.locator('#webResult section').count()==2 and page.locator('#webResult blockquote').count()==0
  assert '꺼져 있습니다' in page.locator('#verificationNote').inner_text() and not errors,errors
  browser.close()
 print('PASS knowledge-only browser UI: explicit AI assessment, disabled external-search option, four-second status, no fabricated evidence links/quotes or verified-fact label.')
